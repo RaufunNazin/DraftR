@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache"
 import prisma from "@/lib/db"
 import { auth } from "@/lib/auth"
-import type { Tournament } from "@/lib/types"
 
 /**
  * Generate a random 4-character tournament code
@@ -43,7 +42,7 @@ export async function createTournament(name: string) {
 
   try {
     // Generate a unique tournament code
-    let code: string
+    let code: string = ""
     let isCodeUnique = false
 
     while (!isCodeUnique) {
@@ -198,7 +197,7 @@ export async function getTournaments() {
   }
 
   try {
-    let tournaments: Tournament[] = []
+    let tournaments = []
 
     // If user is admin, get all tournaments
     if (session.user.role === "ADMIN") {
@@ -312,5 +311,48 @@ export async function joinTournamentByCode(code: string) {
   } catch (error) {
     console.error("Error joining tournament:", error)
     return { success: false, error: "Failed to join tournament" }
+  }
+}
+
+/**
+ * Delete a tournament
+ */
+export async function deleteTournament(id: string) {
+  const session = await auth()
+
+  if (!session || !session.user) {
+    return { success: false, error: "You must be logged in to delete a tournament" }
+  }
+
+  // Check if user is an admin
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  })
+
+  if (!user || user.role !== "ADMIN") {
+    return { success: false, error: "Only admins can delete tournaments" }
+  }
+
+  try {
+    // Check if tournament exists
+    const tournament = await prisma.tournament.findUnique({
+      where: { id },
+    })
+
+    if (!tournament) {
+      return { success: false, error: "Tournament not found" }
+    }
+
+    // Delete tournament
+    await prisma.tournament.delete({
+      where: { id },
+    })
+
+    revalidatePath("/admin")
+    return { success: true }
+  } catch (error) {
+    console.error("Error deleting tournament:", error)
+    return { success: false, error: "Failed to delete tournament" }
   }
 }

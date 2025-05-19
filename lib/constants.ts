@@ -1,6 +1,6 @@
-import type { Agent, Role } from "./types"
+import type { Agent, PlayerRole } from "./types"
 
-export const ROLES: Role[] = ["Duelist", "Initiator", "Controller", "Sentinel"]
+export const ROLES: PlayerRole[] = ["DUELIST", "INITIATOR", "CONTROLLER", "SENTINEL"]
 
 export const AGENTS: Agent[] = [
   // Duelists
@@ -132,30 +132,3 @@ export const MOCK_CAPTAINS = [
 export const BID_INCREMENTS = [1, 5, 10]
 
 export const AUCTION_TIMER_SECONDS = 30
-
-export const MOCK_TOURNAMENTS = [
-  {
-    id: "tournament-1",
-    name: "VCT Champions 2023",
-    code: "VCT23",
-    status: "active",
-    createdAt: Date.now() - 86400000, // 1 day ago
-    hostId: "host-1",
-  },
-  {
-    id: "tournament-2",
-    name: "Valorant Masters Tokyo",
-    code: "VMTK",
-    status: "upcoming",
-    createdAt: Date.now() - 172800000, // 2 days ago
-    hostId: "host-1",
-  },
-  {
-    id: "tournament-3",
-    name: "Challengers NA 2023",
-    code: "CNA23",
-    status: "completed",
-    createdAt: Date.now() - 604800000, // 7 days ago
-    hostId: "host-1",
-  },
-]

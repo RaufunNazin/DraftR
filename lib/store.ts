@@ -1,8 +1,10 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { v4 as uuidv4 } from "uuid"
-import type { Player, Captain, Role, Agent, Tier, UserRole, Tournament } from "./types"
-import { MOCK_CAPTAINS, MOCK_PLAYERS, TIER_STARTING_PRICES, MOCK_TOURNAMENTS } from "./constants"
+import type { Player, Captain, UserRole, Tournament } from "./types"
+import { TIER_STARTING_PRICES } from "./constants"
+import { useSession } from "next-auth/react"
+
 
 interface AppState {
   // User role
@@ -15,16 +17,13 @@ interface AppState {
   registeredPlayers: Player[]
   addPlayer: (player: Omit<Player, "id" | "startingPrice">) => void
   removePlayer: (id: string) => void
-  loadMockPlayers: () => void
 
   // Captain management
   captains: Captain[]
-  loadMockCaptains: () => void
 
   // Tournament management
   tournaments: Tournament[]
   currentTournamentCode: string | null
-  loadMockTournaments: () => void
   createTournament: (name: string) => string // Returns tournament code
   joinTournament: (code: string) => boolean // Returns success status
   setCurrentTournamentCode: (code: string | null) => void
@@ -39,11 +38,12 @@ interface AppState {
   resetState: () => void
 }
 
+const { data: session, status } = useSession();
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       // User role
-      userRole: "audience",
+      userRole: "AUDIENCE",
       setUserRole: (role) => set({ userRole: role }),
       selectedCaptainId: null,
       setSelectedCaptainId: (id) => set({ selectedCaptainId: id }),
@@ -59,6 +59,7 @@ export const useAppStore = create<AppState>()(
             role: player.role,
             agents: player.agents,
             startingPrice: TIER_STARTING_PRICES[player.tier],
+            captainId: null,
           }
           return { registeredPlayers: [...state.registeredPlayers, newPlayer] }
         }),
@@ -66,44 +67,31 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           registeredPlayers: state.registeredPlayers.filter((player) => player.id !== id),
         })),
-      loadMockPlayers: () =>
-        set(() => {
-          const players = MOCK_PLAYERS.map((player) => ({
-            id: uuidv4(),
-            name: player.name,
-            tier: player.tier as Tier,
-            role: player.role as Role,
-            agents: player.agents as Agent[],
-            startingPrice: TIER_STARTING_PRICES[player.tier as Tier],
-          }))
-          return { registeredPlayers: players }
-        }),
 
       // Captain management
       captains: [],
-      loadMockCaptains: () =>
-        set(() => {
-          const captains = MOCK_CAPTAINS.map((captain) => ({
-            ...captain,
-            pickedPlayers: [],
-            pickedTiers: [],
-          }))
-          return { captains }
-        }),
 
       // Tournament management
       tournaments: [],
       currentTournamentCode: null,
-      loadMockTournaments: () => set({ tournaments: MOCK_TOURNAMENTS }),
       createTournament: (name) => {
         const code = generateTournamentCode()
         const newTournament: Tournament = {
           id: uuidv4(),
           name,
           code,
-          status: "upcoming",
-          createdAt: Date.now(),
-          hostId: "host-1", // In a real app, this would be the current user's ID
+          status: "UPCOMING",
+          createdAt: new Date(),
+          hostId: session?.user?.id, // In a real app, this would be the current user's ID
+          host: session?.user
+            ? {
+                ...session.user,
+                name: session.user.name ?? "",
+                email: session.user.email ?? "",
+              }
+            : undefined, // Replace with actual host object if available
+          players: [],
+          captains: [],
         }
         set((state) => ({
           tournaments: [...state.tournaments, newTournament],
@@ -132,7 +120,7 @@ export const useAppStore = create<AppState>()(
         set({
           registeredPlayers: [],
           captains: [],
-          userRole: "audience",
+          userRole: "AUDIENCE",
           selectedCaptainId: null,
           isSidebarOpen: false,
           sidebarTab: "roster",

@@ -178,7 +178,8 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
                       <div className="text-xs text-destructive">
                         {selectedCaptain.tier === auctionState.currentPlayer.tier
                           ? "You cannot bid on your own tier"
-                          : selectedCaptain.pickedTiers.some((pt) => pt.tier === auctionState.currentPlayer.tier)
+                          : auctionState.currentPlayer &&
+                            selectedCaptain.pickedTiers.some((pt) => pt.tier === auctionState.currentPlayer!.tier)
                             ? "You already have a player from this tier"
                             : selectedCaptain.credits < auctionState.currentBid
                               ? "Not enough credits"

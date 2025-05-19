@@ -13,7 +13,7 @@ import { Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getTournamentByCode, joinTournamentByCode } from "@/lib/actions/tournament"
-import type { UserRole } from "@/lib/types"
+import type { Captain, UserRole } from "@/lib/types"
 
 export default function AuctionPage() {
   const router = useRouter()
@@ -71,14 +71,14 @@ export default function AuctionPage() {
               } else {
                 // Check if user is a captain
                 const isCaptain = tournamentResult.tournament.captains.some(
-                  (captain) => captain.user.id === session?.user?.id,
+                  (captain: Captain) => captain.user.id === session?.user?.id,
                 )
 
                 if (isCaptain) {
                   setUserRole("CAPTAIN")
                   // Set selected captain ID
                   const captain = tournamentResult.tournament.captains.find(
-                    (captain) => captain.user.id === session?.user?.id,
+                    (captain: Captain) => captain.user.id === session?.user?.id,
                   )
                   if (captain) {
                     setSelectedCaptainId(captain.id)
@@ -190,7 +190,7 @@ export default function AuctionPage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Role Selector (for demo purposes) */}
-      <div className="fixed top-4 right-4 z-50">
+      {/* <div className="fixed top-4 right-4 z-50">
         <Select value={userRole} onValueChange={(value) => handleRoleChange(value as UserRole)}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="View as" />
@@ -202,7 +202,7 @@ export default function AuctionPage() {
             <SelectItem value="AUDIENCE">Audience</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </div> */}
 
       <div className="flex flex-1">
         <AuctionRoom

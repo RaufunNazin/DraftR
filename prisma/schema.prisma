@@ -8,181 +8,134 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  password  String
-  role      UserRole @default(AUDIENCE)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  hostedTournaments Tournament[] @relation("TournamentHost")
-  captainProfile    Captain?
+  id                      String       @id @default(cuid())
+  email                   String       @unique
+  name                    String
+  password                String
+  role                    UserRole     @default(AUDIENCE)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+  captainProfile          Captain?
+  hostedTournaments       Tournament[] @relation("TournamentHost")
   participatedTournaments Tournament[] @relation("TournamentParticipants")
 }
 
-enum UserRole {
-  ADMIN
-  HOST
-  CAPTAIN
-  AUDIENCE
-}
-
 model Tournament {
-  id          String   @id @default(cuid())
-  name        String
-  code        String   @unique @db.VarChar(4)
-  status      TournamentStatus @default(UPCOMING)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  startedAt   DateTime?
-  endedAt     DateTime?
-
-  // Relations
-  hostId      String
-  host        User     @relation("TournamentHost", fields: [hostId], references: [id])
-  players     Player[]
-  captains    Captain[]
-  auction     Auction?
-  participants User[]   @relation("TournamentParticipants")
-}
-
-enum TournamentStatus {
-  UPCOMING
-  ACTIVE
-  COMPLETED
+  id           String           @id @default(cuid())
+  name         String
+  code         String           @unique @db.VarChar(4)
+  status       TournamentStatus @default(UPCOMING)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  startedAt    DateTime?
+  endedAt      DateTime?
+  hostId       String
+  auction      Auction?
+  captains     Captain[]
+  players      Player[]
+  host         User             @relation("TournamentHost", fields: [hostId], references: [id])
+  participants User[]           @relation("TournamentParticipants")
 }
 
 model Player {
-  id            String   @id @default(cuid())
-  name          String
-  tier          Int      @db.SmallInt // 1-5
-  role          PlayerRole
-  startingPrice Int
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations
-  tournamentId  String
-  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  agents        PlayerAgent[]
-  captainId     String?
-  captain       Captain?  @relation(fields: [captainId], references: [id])
-  auctionHistory AuctionHistory[]
-  currentInAuction Auction? @relation("CurrentAuctionPlayer")
-}
-
-enum PlayerRole {
-  DUELIST
-  INITIATOR
-  CONTROLLER
-  SENTINEL
+  id               String           @id @default(cuid())
+  name             String
+  tier             Int              @db.SmallInt
+  role             PlayerRole
+  startingPrice    Int
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  tournamentId     String
+  captainId        String?
+  currentInAuction Auction?         @relation("CurrentAuctionPlayer")
+  auctionHistory   AuctionHistory[]
+  captain          Captain?         @relation(fields: [captainId], references: [id])
+  tournament       Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  agents           PlayerAgent[]
 }
 
 model PlayerAgent {
-  id        String   @id @default(cuid())
-  agent     String
-  
-  // Relations
-  playerId  String
-  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  agent    String
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@unique([playerId, agent])
 }
 
 model Captain {
-  id        String   @id @default(cuid())
-  tier      Int      @db.SmallInt // 1-5
-  role      PlayerRole
-  credits   Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String              @id @default(cuid())
+  tier         Int                 @db.SmallInt
+  role         PlayerRole
+  credits      Int
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  userId       String              @unique
   tournamentId String
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  players   Player[]
-  pickedTiers CaptainPickedTier[]
-  agents    CaptainAgent[]
-  bids      AuctionBid[]
-  wonAuctions AuctionHistory[]
-  skipVotes AuctionSkipVote[]
+  bids         AuctionBid[]
+  wonAuctions  AuctionHistory[]
+  skipVotes    AuctionSkipVote[]
+  tournament   Tournament          @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agents       CaptainAgent[]
+  pickedTiers  CaptainPickedTier[]
+  players      Player[]
 }
 
 model CaptainPickedTier {
-  id        String   @id @default(cuid())
-  tier      Int      @db.SmallInt // 1-5
-  
-  // Relations
+  id        String  @id @default(cuid())
+  tier      Int     @db.SmallInt
   captainId String
-  captain   Captain  @relation(fields: [captainId], references: [id], onDelete: Cascade)
+  captain   Captain @relation(fields: [captainId], references: [id], onDelete: Cascade)
 
   @@unique([captainId, tier])
 }
 
 model CaptainAgent {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   agent     String
-  
-  // Relations
   captainId String
-  captain   Captain  @relation(fields: [captainId], references: [id], onDelete: Cascade)
+  captain   Captain @relation(fields: [captainId], references: [id], onDelete: Cascade)
 
   @@unique([captainId, agent])
 }
 
 model Auction {
-  id              String   @id @default(cuid())
-  isActive        Boolean  @default(false)
-  bidMode         BidMode  @default(OPEN)
-  timerSeconds    Int      @default(30)
-  currentTimer    Int      @default(30)
-  isPaused        Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id              String            @id @default(cuid())
+  isActive        Boolean           @default(false)
+  bidMode         BidMode           @default(OPEN)
+  timerSeconds    Int               @default(30)
+  currentTimer    Int               @default(30)
+  isPaused        Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   startedAt       DateTime?
   endedAt         DateTime?
-
-  // Relations
-  tournamentId    String   @unique
-  tournament      Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  currentPlayerId String?   @unique
-  currentPlayer   Player?   @relation("CurrentAuctionPlayer", fields: [currentPlayerId], references: [id])
+  tournamentId    String            @unique
+  currentPlayerId String?           @unique
+  currentPlayer   Player?           @relation("CurrentAuctionPlayer", fields: [currentPlayerId], references: [id])
+  tournament      Tournament        @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   bids            AuctionBid[]
-  skipVotes       AuctionSkipVote[]
   history         AuctionHistory[]
-}
-
-enum BidMode {
-  OPEN
-  HIDDEN
-  BLIND
-  TIMED
+  skipVotes       AuctionSkipVote[]
 }
 
 model AuctionBid {
   id        String   @id @default(cuid())
   amount    Int
   createdAt DateTime @default(now())
-
-  // Relations
   auctionId String
-  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
   captainId String
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
   captain   Captain  @relation(fields: [captainId], references: [id])
 }
 
 model AuctionSkipVote {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
-
-  // Relations
   auctionId String
-  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
   captainId String
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
   captain   Captain  @relation(fields: [captainId], references: [id])
 
   @@unique([auctionId, captainId])
@@ -192,12 +145,37 @@ model AuctionHistory {
   id        String   @id @default(cuid())
   finalBid  Int
   timestamp DateTime @default(now())
-
-  // Relations
   auctionId String
-  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
   playerId  String
-  player    Player   @relation(fields: [playerId], references: [id])
   captainId String
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
   captain   Captain  @relation(fields: [captainId], references: [id])
+  player    Player   @relation(fields: [playerId], references: [id])
+}
+
+enum UserRole {
+  ADMIN
+  HOST
+  CAPTAIN
+  AUDIENCE
+}
+
+enum TournamentStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+}
+
+enum PlayerRole {
+  DUELIST
+  INITIATOR
+  CONTROLLER
+  SENTINEL
+}
+
+enum BidMode {
+  OPEN
+  HIDDEN
+  BLIND
+  TIMED
 }

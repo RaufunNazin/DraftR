@@ -8,7 +8,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-b from-background to-background/80 flex flex-col">
       <header className="container mx-auto py-6">
         <h1 className="text-4xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-purple-600">
-          Valorant Team Auction
+          DraftR
         </h1>
       </header>
 
@@ -74,7 +74,7 @@ export default function Home() {
               </p>
             </CardContent>
             <CardFooter>
-              <Link href="/register" className="w-full">
+              <Link href={`/admin/tournaments/WF9G`} className="w-full">
                 <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
                   Register Players
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -86,7 +86,7 @@ export default function Home() {
       </main>
 
       <footer className="container mx-auto py-6 text-center text-sm text-muted-foreground">
-        <p>Valorant Team Auction &copy; {new Date().getFullYear()}</p>
+        <p>DraftR &copy; {new Date().getFullYear()}</p>
       </footer>
     </div>
   )

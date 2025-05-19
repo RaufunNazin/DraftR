@@ -1,5 +1,7 @@
 export type PlayerRole = "DUELIST" | "INITIATOR" | "CONTROLLER" | "SENTINEL"
 
+export type Role = "AUDIENCE" | "CAPTAIN"
+
 export type Agent =
   | "Jett"
   | "Phoenix"
@@ -88,8 +90,8 @@ export interface Tournament {
   code: string
   status: TournamentStatus
   createdAt: Date
-  hostId: string
-  host: User
+  hostId: string | undefined
+  host: User | undefined
   players: Player[]
   captains: Captain[]
 }

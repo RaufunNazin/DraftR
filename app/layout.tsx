@@ -1,8 +1,6 @@
-import type React from "react"
 import type { Metadata } from "next"
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { SocketProvider } from "@/components/socket-provider"
+import { Providers } from "@/components/providers" // Adjust the path as needed
 
 export const metadata: Metadata = {
   title: "Valorant Team Auction",
@@ -11,15 +9,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <SocketProvider>{children}</SocketProvider>
-        </ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )

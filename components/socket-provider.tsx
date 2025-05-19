@@ -24,7 +24,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     }
   }, [connect, disconnect])
 
-  return <SocketContext.Provider value={{ isConnected, error, joinTournament }}>{children}</SocketContext.Provider>
+  return <SocketContext.Provider value={{ isConnected, error: error ?? null, joinTournament }}>{children}</SocketContext.Provider>
 }
 
 export function useSocket() {

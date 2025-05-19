@@ -24,7 +24,6 @@ app.prepare().then(() => {
     // Join a tournament room
     socket.on("join-tournament", async (tournamentCode) => {
       try {
-        // Validate tournament code
         const tournament = await prisma.tournament.findUnique({
           where: { code: tournamentCode },
         })
@@ -34,23 +33,34 @@ app.prepare().then(() => {
           return
         }
 
-        // Join the tournament room
         socket.join(`tournament:${tournamentCode}`)
         console.log(`Socket ${socket.id} joined tournament ${tournamentCode}`)
 
-        // Send initial auction state
-        const auction = await prisma.auction.findUnique({
+        // Auto-initialize auction if it doesn't exist
+        let auction = await prisma.auction.findUnique({
           where: { tournamentId: tournament.id },
-          include: {
-            currentPlayer: {
-              include: {
-                agents: true,
-              },
+        })
+
+        if (!auction) {
+          auction = await prisma.auction.create({
+            data: {
+              tournamentId: tournament.id,
+              bidMode: "OPEN",
+              timerSeconds: 30,
+              currentTimer: 30,
+              isActive: false,
+              isPaused: false,
             },
+          })
+        }
+
+        // Populate auction state
+        const fullAuction = await prisma.auction.findUnique({
+          where: { id: auction.id },
+          include: {
+            currentPlayer: { include: { agents: true } },
             bids: {
-              orderBy: {
-                createdAt: "desc",
-              },
+              orderBy: { createdAt: "desc" },
               take: 1,
               include: {
                 captain: {
@@ -58,108 +68,66 @@ app.prepare().then(() => {
                     id: true,
                     tier: true,
                     credits: true,
-                    user: {
-                      select: {
-                        name: true,
-                      },
-                    },
+                    user: { select: { name: true } },
                   },
                 },
               },
             },
-            skipVotes: {
-              include: {
-                captain: {
-                  select: {
-                    id: true,
-                  },
-                },
-              },
-            },
+            skipVotes: { include: { captain: true } },
           },
         })
 
-        if (auction) {
-          // Get all captains for the tournament
-          const captains = await prisma.captain.findMany({
-            where: { tournamentId: tournament.id },
-            include: {
-              user: {
-                select: {
-                  name: true,
-                },
-              },
-              pickedTiers: true,
-              players: {
-                include: {
-                  agents: true,
-                },
-              },
-              agents: true,
-            },
-          })
+        const captains = await prisma.captain.findMany({
+          where: { tournamentId: tournament.id },
+          include: {
+            user: { select: { name: true } },
+            pickedTiers: true,
+            players: { include: { agents: true } },
+            agents: true,
+          },
+        })
 
-          // Get remaining players
-          const players = await prisma.player.findMany({
-            where: {
-              tournamentId: tournament.id,
-              captainId: null,
-            },
-            include: {
-              agents: true,
-            },
-          })
+        const players = await prisma.player.findMany({
+          where: {
+            tournamentId: tournament.id,
+            captainId: null,
+          },
+          include: { agents: true },
+        })
 
-          // Get auction history
-          const history = await prisma.auctionHistory.findMany({
-            where: { auctionId: auction.id },
-            include: {
-              player: {
-                select: {
-                  name: true,
-                },
-              },
-              captain: {
-                select: {
-                  user: {
-                    select: {
-                      name: true,
-                    },
-                  },
-                },
-              },
-            },
-            orderBy: {
-              timestamp: "desc",
-            },
-          })
+        const history = await prisma.auctionHistory.findMany({
+          where: { auctionId: auction.id },
+          include: {
+            player: { select: { name: true } },
+            captain: { select: { user: { select: { name: true } } } },
+          },
+          orderBy: { timestamp: "desc" },
+        })
 
-          // Format the auction state
-          const auctionState = {
-            isActive: auction.isActive,
-            isPaused: auction.isPaused,
-            bidMode: auction.bidMode,
-            timer: auction.currentTimer,
-            currentPlayer: auction.currentPlayer,
-            currentBid: auction.bids[0]?.amount || auction.currentPlayer?.startingPrice || 0,
-            currentBidder: auction.bids[0]?.captain || null,
-            skipVotes: auction.skipVotes.map((vote) => vote.captainId),
-            captains,
-            players,
-            history: history.map((item) => ({
-              playerId: item.playerId,
-              playerName: item.player.name,
-              captainId: item.captainId,
-              captainName: item.captain.user.name,
-              finalBid: item.finalBid,
-              timestamp: item.timestamp,
-            })),
-          }
-
-          socket.emit("auction:state", auctionState)
+        const auctionState = {
+          isActive: fullAuction.isActive,
+          isPaused: fullAuction.isPaused,
+          bidMode: fullAuction.bidMode,
+          timer: fullAuction.currentTimer,
+          currentPlayer: fullAuction.currentPlayer,
+          currentBid: fullAuction.bids[0]?.amount || fullAuction.currentPlayer?.startingPrice || 0,
+          currentBidder: fullAuction.bids[0]?.captain || null,
+          skipVotes: fullAuction.skipVotes.map((v) => v.captainId),
+          captains,
+          players,
+          history: history.map((h) => ({
+            playerId: h.playerId,
+            playerName: h.player.name,
+            captainId: h.captainId,
+            captainName: h.captain.user.name,
+            finalBid: h.finalBid,
+            timestamp: h.timestamp,
+          })),
         }
+
+        socket.emit("auction:state", auctionState)
       } catch (error) {
-        console.error("Error joining tournament:", error)
+        console.error("join-tournament error:", error)
         socket.emit("error", { message: "Failed to join tournament" })
       }
     })
