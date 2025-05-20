@@ -11,9 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getTournamentByCode, joinTournamentByCode } from "@/lib/actions/tournament"
-import type { Captain, UserRole } from "@/lib/types"
+import type { UserRole } from "@/lib/types"
 
 export default function AuctionPage() {
   const router = useRouter()
@@ -55,6 +54,7 @@ export default function AuctionPage() {
     const initializeAuction = async () => {
       if (status === "authenticated" && isConnected && tournamentCode) {
         try {
+          console.log("Initializing auction with tournament code:", tournamentCode)
           // Join tournament in database
           const result = await joinTournamentByCode(tournamentCode)
 
@@ -71,14 +71,14 @@ export default function AuctionPage() {
               } else {
                 // Check if user is a captain
                 const isCaptain = tournamentResult.tournament.captains.some(
-                  (captain: Captain) => captain.user.id === session?.user?.id,
+                  (captain) => captain.user.id === session?.user?.id,
                 )
 
                 if (isCaptain) {
                   setUserRole("CAPTAIN")
                   // Set selected captain ID
                   const captain = tournamentResult.tournament.captains.find(
-                    (captain: Captain) => captain.user.id === session?.user?.id,
+                    (captain) => captain.user.id === session?.user?.id,
                   )
                   if (captain) {
                     setSelectedCaptainId(captain.id)
@@ -89,6 +89,7 @@ export default function AuctionPage() {
               }
 
               // Join tournament in socket
+              console.log("Joining socket tournament with code:", tournamentCode)
               joinSocketTournament(tournamentCode)
             } else {
               toast({
@@ -105,6 +106,7 @@ export default function AuctionPage() {
             })
           }
         } catch (error) {
+          console.error("Error initializing auction:", error)
           toast({
             title: "Error",
             description: "Failed to initialize auction",
@@ -189,21 +191,6 @@ export default function AuctionPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Role Selector (for demo purposes) */}
-      {/* <div className="fixed top-4 right-4 z-50">
-        <Select value={userRole} onValueChange={(value) => handleRoleChange(value as UserRole)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="View as" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ADMIN">Admin</SelectItem>
-            <SelectItem value="HOST">Host</SelectItem>
-            <SelectItem value="CAPTAIN">Captain</SelectItem>
-            <SelectItem value="AUDIENCE">Audience</SelectItem>
-          </SelectContent>
-        </Select>
-      </div> */}
-
       <div className="flex flex-1">
         <AuctionRoom
           userRole={userRole}

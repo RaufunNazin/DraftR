@@ -1,13 +1,15 @@
 "use client"
+
+// Add a startAuction function to the host controls
 import { useSocketStore } from "@/lib/socket"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertCircle, Eye, EyeOff, Pause, Play, Shield, Timer } from "lucide-react"
+import { AlertCircle, Eye, EyeOff, Gavel, Pause, Play, Shield, Timer } from "lucide-react"
 import type { BidMode } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 
 export function HostControls() {
-  const { auctionState, changeBidMode, togglePause } = useSocketStore()
+  const { auctionState, changeBidMode, togglePause, startAuction } = useSocketStore()
   const { toast } = useToast()
 
   const handleChangeBidMode = (mode: BidMode) => {
@@ -30,6 +32,16 @@ export function HostControls() {
     })
   }
 
+  const handleStartAuction = () => {
+    console.log("Start auction button clicked in host controls")
+    startAuction()
+
+    toast({
+      title: "Auction Started",
+      description: "The auction has been started",
+    })
+  }
+
   if (!auctionState) return null
 
   return (
@@ -41,6 +53,16 @@ export function HostControls() {
         </div>
 
         <div className="flex items-center gap-4">
+          {!auctionState.isActive && (
+            <Button
+              onClick={handleStartAuction}
+              className="bg-gradient-to-r from-red-500 to-purple-600 hover:from-red-600 hover:to-purple-700"
+            >
+              <Gavel className="h-4 w-4 mr-2" />
+              Start Auction
+            </Button>
+          )}
+
           <Select value={auctionState.bidMode} onValueChange={(value) => handleChangeBidMode(value as BidMode)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select bid mode" />

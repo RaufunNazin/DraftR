@@ -495,6 +495,7 @@ export const useSocketStore = create<SocketStore>()(
           return
         }
 
+        console.log("Emitting auction:start event with tournamentCode:", tournamentCode)
         socket.emit("auction:start", { tournamentCode })
       },
 

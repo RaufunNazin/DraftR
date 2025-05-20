@@ -42,6 +42,7 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
   }, [auctionState?.captains, selectedCaptainId, setSelectedCaptainId, userRole])
 
   const handleStartAuction = () => {
+    console.log("Start auction button clicked")
     startAuction()
   }
 

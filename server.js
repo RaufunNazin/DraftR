@@ -477,11 +477,20 @@ function startServer() {
       // Handle auction start
       socket.on("auction:start", async (data) => {
         try {
+          console.log("Received auction:start event with data:", data)
           const { tournamentCode } = data
+
+          if (!tournamentCode) {
+            console.error("No tournament code provided in auction:start event")
+            socket.emit("error", { message: "No tournament code provided" })
+            return
+          }
 
           // Get cached auction state
           let auctionState = tournamentCache.get(tournamentCode)
           if (!auctionState) {
+            console.log("No cached auction state found, fetching from database")
+            // Rest of the function remains the same...
             // Fallback to database if not in cache
             const tournament = await prisma.tournament.findUnique({
               where: { code: tournamentCode },
@@ -642,7 +651,7 @@ function startServer() {
             // Pause the timer
             if (activeTimers.has(auctionState.auctionId)) {
               clearInterval(activeTimers.get(auctionState.auctionId))
-              activeTimers.delete(auctionState.auctionId)
+              activeTimers.delete(activeTimers.get(auctionState.auctionId))
 
               // Store the current timer value
               pausedTimers.set(auctionState.auctionId, {
@@ -708,10 +717,12 @@ function startServer() {
 // Helper function to select the next player for auction
 async function selectNextPlayer(auctionId, tournamentCode, io) {
   try {
+    console.log(`Selecting next player for auction ${auctionId} in tournament ${tournamentCode}`)
     // Get cached auction state
     const auctionState = tournamentCache.get(tournamentCode)
 
     if (!auctionState) {
+      console.log("No cached auction state found, fetching from database")
       // Fallback to database
       const auction = await prisma.auction.findUnique({
         where: { id: auctionId },
