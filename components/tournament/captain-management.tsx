@@ -1,74 +1,98 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { useToast } from "@/hooks/use-toast"
-import { Loader2, Trash2, UserPlus } from "lucide-react"
-import { ROLES, TIER_STARTING_CREDITS } from "@/lib/constants"
-import { getCaptains, removeCaptain, assignCaptain, getAvailableUsers } from "@/lib/actions/captain"
-import type { Captain, User, PlayerRole, Tier } from "@/lib/types"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Trash2, UserPlus } from "lucide-react";
+import { ROLES, TIER_STARTING_CREDITS } from "@/lib/constants";
+import {
+  getCaptains,
+  removeCaptain,
+  assignCaptain,
+  getAvailableUsers,
+} from "@/lib/actions/captain";
+import type { ViewCaptain, Captain, User, PlayerRole, Tier } from "@/lib/types";
 
 interface CaptainManagementProps {
-  tournamentId: string
-  onCaptainsUpdated?: () => void
+  tournamentId: string;
 }
 
-export function CaptainManagement({ tournamentId, onCaptainsUpdated }: CaptainManagementProps) {
-  const { toast } = useToast()
-  const [captains, setCaptains] = useState<Captain[]>([])
-  const [availableUsers, setAvailableUsers] = useState<User[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+export function CaptainManagement({ tournamentId }: CaptainManagementProps) {
+  const { toast } = useToast();
+  const [captains, setCaptains] = useState<ViewCaptain[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<User[] | undefined>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state
-  const [selectedUserId, setSelectedUserId] = useState("")
-  const [tier, setTier] = useState<Tier | null>(null)
-  const [role, setRole] = useState<PlayerRole | null>(null)
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [tier, setTier] = useState<Tier | null>(null);
+  const [role, setRole] = useState<PlayerRole | null>(null);
 
   useEffect(() => {
-    loadData()
-  }, [tournamentId])
+    loadData();
+  }, [tournamentId]);
 
   const loadData = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       // Load captains
-      const captainsResult = await getCaptains(tournamentId)
+      const captainsResult = await getCaptains(tournamentId);
       if (captainsResult.success) {
-        setCaptains(captainsResult.captains)
+        setCaptains(
+          (captainsResult.captains ?? []).map((c) => ({
+            ...c,
+            tier: c.tier as Tier,
+            players: c.players.map((p) => ({
+              ...p,
+              tier: p.tier as Tier,
+            })),
+            pickedTiers:
+              c.pickedTiers?.map((pt) => ({
+                ...pt,
+                tier: pt.tier as Tier,
+              })) ?? [],
+          }))
+        );
       } else {
         toast({
           title: "Error",
           description: captainsResult.error || "Failed to load captains",
           variant: "destructive",
-        })
+        });
       }
 
       // Load available users
-      const usersResult = await getAvailableUsers(tournamentId)
+      const usersResult = await getAvailableUsers(tournamentId);
       if (usersResult.success) {
-        setAvailableUsers(usersResult.users)
+        setAvailableUsers(usersResult.users);
       } else {
         toast({
           title: "Error",
           description: usersResult.error || "Failed to load available users",
           variant: "destructive",
-        })
+        });
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to load data",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleAssignCaptain = async () => {
     if (!selectedUserId || !tier || !role) {
@@ -76,75 +100,78 @@ export function CaptainManagement({ tournamentId, onCaptainsUpdated }: CaptainMa
         title: "Missing information",
         description: "Please select a user, tier, and role.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     try {
-      const result = await assignCaptain(tournamentId, selectedUserId, tier, role)
+      const result = await assignCaptain(
+        tournamentId,
+        selectedUserId,
+        tier,
+        role
+      );
 
       if (result.success) {
         toast({
           title: "Captain assigned",
           description: "User has been assigned as a captain.",
-        })
+        });
 
         // Reset form
-        setSelectedUserId("")
-        setTier(null)
-        setRole(null)
+        setSelectedUserId("");
+        setTier(null);
+        setRole(null);
 
         // Reload data
-        await loadData()
-        if (onCaptainsUpdated) onCaptainsUpdated()
+        await loadData();
       } else {
         toast({
           title: "Error",
           description: result.error || "Failed to assign captain",
           variant: "destructive",
-        })
+        });
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to assign captain",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleRemoveCaptain = async (captainId: string) => {
     try {
-      const result = await removeCaptain(captainId)
+      const result = await removeCaptain(captainId);
 
       if (result.success) {
         toast({
           title: "Captain removed",
           description: "Captain has been removed from the tournament.",
-        })
+        });
 
         // Reload data
-        await loadData()
-        if (onCaptainsUpdated) onCaptainsUpdated()
+        await loadData();
       } else {
         toast({
           title: "Error",
           description: result.error || "Failed to remove captain",
           variant: "destructive",
-        })
+        });
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to remove captain",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -161,7 +188,7 @@ export function CaptainManagement({ tournamentId, onCaptainsUpdated }: CaptainMa
                 <SelectValue placeholder="Select user" />
               </SelectTrigger>
               <SelectContent>
-                {availableUsers.map((user) => (
+                {availableUsers?.map((user) => (
                   <SelectItem key={user.id} value={user.id}>
                     {user.name}
                   </SelectItem>
@@ -173,23 +200,41 @@ export function CaptainManagement({ tournamentId, onCaptainsUpdated }: CaptainMa
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label htmlFor="tier">Tier</label>
-              <Select onValueChange={(value) => setTier(Number.parseInt(value) as Tier)} value={tier?.toString()}>
+              <Select
+                onValueChange={(value) =>
+                  setTier(Number.parseInt(value) as Tier)
+                }
+                value={tier?.toString()}
+              >
                 <SelectTrigger id="tier">
                   <SelectValue placeholder="Select tier" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Tier 1 ({TIER_STARTING_CREDITS[1]} credits)</SelectItem>
-                  <SelectItem value="2">Tier 2 ({TIER_STARTING_CREDITS[2]} credits)</SelectItem>
-                  <SelectItem value="3">Tier 3 ({TIER_STARTING_CREDITS[3]} credits)</SelectItem>
-                  <SelectItem value="4">Tier 4 ({TIER_STARTING_CREDITS[4]} credits)</SelectItem>
-                  <SelectItem value="5">Tier 5 ({TIER_STARTING_CREDITS[5]} credits)</SelectItem>
+                  <SelectItem value="1">
+                    Tier 1 ({TIER_STARTING_CREDITS[1]} credits)
+                  </SelectItem>
+                  <SelectItem value="2">
+                    Tier 2 ({TIER_STARTING_CREDITS[2]} credits)
+                  </SelectItem>
+                  <SelectItem value="3">
+                    Tier 3 ({TIER_STARTING_CREDITS[3]} credits)
+                  </SelectItem>
+                  <SelectItem value="4">
+                    Tier 4 ({TIER_STARTING_CREDITS[4]} credits)
+                  </SelectItem>
+                  <SelectItem value="5">
+                    Tier 5 ({TIER_STARTING_CREDITS[5]} credits)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
               <label htmlFor="role">Main Role</label>
-              <Select onValueChange={(value) => setRole(value as PlayerRole)} value={role || undefined}>
+              <Select
+                onValueChange={(value) => setRole(value as PlayerRole)}
+                value={role || undefined}
+              >
                 <SelectTrigger id="role">
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
@@ -204,7 +249,11 @@ export function CaptainManagement({ tournamentId, onCaptainsUpdated }: CaptainMa
             </div>
           </div>
 
-          <Button onClick={handleAssignCaptain} disabled={isSubmitting} className="w-full">
+          <Button
+            onClick={handleAssignCaptain}
+            disabled={isSubmitting}
+            className="w-full"
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -238,10 +287,15 @@ export function CaptainManagement({ tournamentId, onCaptainsUpdated }: CaptainMa
             <ScrollArea className="h-[500px] pr-4">
               <div className="space-y-4">
                 {captains.map((captain) => (
-                  <div key={captain.id} className="p-4 rounded-lg border bg-card hover:bg-card/80 transition-colors">
+                  <div
+                    key={captain.id}
+                    className="p-4 rounded-lg border bg-card hover:bg-card/80 transition-colors"
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
-                        <div className={`tier-badge tier-${captain.tier}`}>{captain.tier}</div>
+                        <div className={`tier-badge tier-${captain.tier}`}>
+                          {captain.tier}
+                        </div>
                         <div className="font-medium">{captain.user.name}</div>
                       </div>
                       <Button
@@ -260,23 +314,30 @@ export function CaptainManagement({ tournamentId, onCaptainsUpdated }: CaptainMa
                           captain.role === "DUELIST"
                             ? "role-duelist"
                             : captain.role === "INITIATOR"
-                              ? "role-initiator"
-                              : captain.role === "CONTROLLER"
-                                ? "role-controller"
-                                : "role-sentinel"
+                            ? "role-initiator"
+                            : captain.role === "CONTROLLER"
+                            ? "role-controller"
+                            : captain.role === "SENTINEL"
+                            ? "role-sentinel"
+                            : "role-flex"
                         }`}
                       >
                         {captain.role}
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        {captain.credits} credits • {captain.players.length} players
+                        {captain.credits} credits • {captain.players.length}{" "}
+                        players
                       </span>
                     </div>
 
                     {captain.agents.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-2">
                         {captain.agents.map((agentObj) => (
-                          <Badge key={agentObj.id} variant="outline" className="text-xs">
+                          <Badge
+                            key={agentObj.id}
+                            variant="outline"
+                            className="text-xs"
+                          >
                             {agentObj.agent}
                           </Badge>
                         ))}
@@ -290,5 +351,5 @@ export function CaptainManagement({ tournamentId, onCaptainsUpdated }: CaptainMa
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

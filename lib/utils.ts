@@ -1,21 +1,23 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import type { Role, Tier } from "./types"
+import type { PlayerRole, Tier } from "./types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function getRoleBadgeClass(role: Role): string {
+export function getRoleBadgeClass(role: PlayerRole): string {
   switch (role) {
-    case "Duelist":
+    case "DUELIST":
       return "role-duelist"
-    case "Initiator":
+    case "INITIATOR":
       return "role-initiator"
-    case "Controller":
+    case "CONTROLLER":
       return "role-controller"
-    case "Sentinel":
+    case "SENTINEL":
       return "role-sentinel"
+    case "FLEX":
+      return "role-flex"
     default:
       return ""
   }

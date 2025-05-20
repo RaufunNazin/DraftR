@@ -16,10 +16,9 @@ import type { Agent, Player, PlayerRole, Tier } from "@/lib/types"
 
 interface PlayerRegistrationProps {
   tournamentId: string
-  onPlayersUpdated?: () => void
 }
 
-export function PlayerRegistration({ tournamentId, onPlayersUpdated }: PlayerRegistrationProps) {
+export function PlayerRegistration({ tournamentId }: PlayerRegistrationProps) {
   const { toast } = useToast()
   const [players, setPlayers] = useState<Player[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -40,7 +39,13 @@ export function PlayerRegistration({ tournamentId, onPlayersUpdated }: PlayerReg
     try {
       const result = await getPlayers(tournamentId)
       if (result.success) {
-        setPlayers(result.players)
+        setPlayers(
+          (result.players ?? []).map((player) => ({
+            ...player,
+            tier: player.tier as unknown as Tier,
+            captain: undefined,
+          }))
+        )
       } else {
         toast({
           title: "Error",
@@ -98,7 +103,6 @@ export function PlayerRegistration({ tournamentId, onPlayersUpdated }: PlayerReg
 
         // Reload players
         await loadPlayers()
-        if (onPlayersUpdated) onPlayersUpdated()
       } else {
         toast({
           title: "Error",
@@ -129,7 +133,6 @@ export function PlayerRegistration({ tournamentId, onPlayersUpdated }: PlayerReg
 
         // Reload players
         await loadPlayers()
-        if (onPlayersUpdated) onPlayersUpdated()
       } else {
         toast({
           title: "Error",
@@ -268,7 +271,7 @@ export function PlayerRegistration({ tournamentId, onPlayersUpdated }: PlayerReg
                       <div className={`tier-badge tier-${player.tier}`}>{player.tier}</div>
                       <div>
                         <div className="font-medium">{player.name}</div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <div className="text-sm text-muted-foreground flex items-center gap-2 mt-2">
                           <span
                             className={`role-badge ${
                               player.role === "DUELIST"
@@ -276,8 +279,9 @@ export function PlayerRegistration({ tournamentId, onPlayersUpdated }: PlayerReg
                                 : player.role === "INITIATOR"
                                   ? "role-initiator"
                                   : player.role === "CONTROLLER"
-                                    ? "role-controller"
-                                    : "role-sentinel"
+                                    ? "role-controller" :
+                                    player.role === "SENTINEL"
+                                    ? "role-sentinel" : "role-flex"
                             }`}
                           >
                             {player.role}

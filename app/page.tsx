@@ -1,7 +1,14 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowRight, Users, Gavel, Plus } from "lucide-react"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ArrowRight, Users, Gavel, Plus } from "lucide-react";
 
 export default function Home() {
   return (
@@ -20,11 +27,14 @@ export default function Home() {
                 <Users className="h-5 w-5 text-red-500" />
                 Join Tournament
               </CardTitle>
-              <CardDescription>Join an existing tournament as audience</CardDescription>
+              <CardDescription>
+                Join an existing tournament as audience
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                Enter a tournament code to join as an audience member and watch the auction in real-time.
+                Enter a tournament code to join as an audience member and watch
+                the auction in real-time.
               </p>
             </CardContent>
             <CardFooter>
@@ -43,11 +53,14 @@ export default function Home() {
                 <Gavel className="h-5 w-5 text-purple-500" />
                 Create Tournament
               </CardTitle>
-              <CardDescription>Create a new tournament as admin</CardDescription>
+              <CardDescription>
+                Create a new tournament as admin
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                Set up a new tournament, add players and captains, and manage the auction as an admin.
+                Set up a new tournament, add players and captains, and manage
+                the auction as an admin.
               </p>
             </CardContent>
             <CardFooter>
@@ -70,7 +83,8 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                Register players with their roles, tiers, and preferred agents for the tournament.
+                Register players with their roles, tiers, and preferred agents
+                for the tournament.
               </p>
             </CardContent>
             <CardFooter>
@@ -89,5 +103,5 @@ export default function Home() {
         <p>DraftR &copy; {new Date().getFullYear()}</p>
       </footer>
     </div>
-  )
+  );
 }

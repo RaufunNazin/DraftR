@@ -92,6 +92,8 @@ export async function getTournamentById(id: string) {
           select: {
             id: true,
             name: true,
+            email: true,
+            role: true,
           },
         },
         players: {
@@ -148,6 +150,8 @@ export async function getTournamentByCode(code: string) {
           select: {
             id: true,
             name: true,
+            email: true,
+            role: true,
           },
         },
         players: {
@@ -207,6 +211,8 @@ export async function getTournaments() {
             select: {
               id: true,
               name: true,
+              email: true,
+              role: true,
             },
           },
           players: true,
@@ -241,6 +247,8 @@ export async function getTournaments() {
             select: {
               id: true,
               name: true,
+              email: true,
+              role: true,
             },
           },
           players: true,

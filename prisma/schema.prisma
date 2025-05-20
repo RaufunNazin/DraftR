@@ -171,6 +171,7 @@ enum PlayerRole {
   INITIATOR
   CONTROLLER
   SENTINEL
+  FLEX
 }
 
 enum BidMode {

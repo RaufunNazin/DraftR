@@ -3,7 +3,7 @@ import "./globals.css"
 import { Providers } from "@/components/providers" // Adjust the path as needed
 
 export const metadata: Metadata = {
-  title: "Valorant Team Auction",
+  title: "Draftr",
   description: "Real-time Valorant Tournament Auction UI",
 }
 

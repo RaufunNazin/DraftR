@@ -1,4 +1,4 @@
-export type PlayerRole = "DUELIST" | "INITIATOR" | "CONTROLLER" | "SENTINEL"
+export type PlayerRole = "DUELIST" | "INITIATOR" | "CONTROLLER" | "SENTINEL" | "FLEX"
 
 export type Role = "AUDIENCE" | "CAPTAIN"
 
@@ -9,13 +9,15 @@ export type Agent =
   | "Reyna"
   | "Yoru"
   | "Neon"
-  | "Iso" // Duelists
+  | "Iso"
+  | "Waylay" // Duelists
   | "Sova"
   | "Breach"
   | "Skye"
   | "KAY/O"
   | "Fade"
-  | "Gekko" // Initiators
+  | "Gekko"
+  | "Tejo" // Initiators
   | "Brimstone"
   | "Omen"
   | "Viper"
@@ -26,7 +28,8 @@ export type Agent =
   | "Cypher"
   | "Sage"
   | "Chamber"
-  | "Deadlock" // Sentinels
+  | "Deadlock"
+  | "Vyse" // Sentinels
 
 export type Tier = 1 | 2 | 3 | 4 | 5
 
@@ -82,6 +85,17 @@ export interface Captain {
   players: Player[]
   pickedTiers: CaptainPickedTier[]
   pickedPlayers: Player[]
+}
+
+export interface ViewCaptain {
+  id: string
+  user: User
+  tier: Tier
+  credits: number
+  role: PlayerRole
+  agents: CaptainAgent[]
+  players: Player[]
+  pickedTiers: CaptainPickedTier[]
 }
 
 export interface Tournament {

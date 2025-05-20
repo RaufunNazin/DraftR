@@ -78,7 +78,6 @@ export default function RegisterPage() {
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
-                placeholder="Your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -89,7 +88,6 @@ export default function RegisterPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="your.email@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -127,14 +125,14 @@ export default function RegisterPage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                Note: Admin and Host roles are assigned by system administrators
+                Note: Admin and Host roles are assigned by RaX
               </p>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+              className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white transition-all duration-200"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -146,10 +144,10 @@ export default function RegisterPage() {
                 "Register"
               )}
             </Button>
-            <div className="text-center text-sm">
-              Already have an account?{" "}
-              <Link href="/login" className="text-primary hover:underline">
-                Login
+            <div className="flex w-full items-center justify-between text-center text-sm">
+              Already have an account?
+              <Link href="/login" className="text-primary underline">
+                Login here
               </Link>
             </div>
           </CardFooter>

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link"
 import {
   Card,
   CardContent,
@@ -44,7 +45,15 @@ export default function DashboardPage() {
     try {
       const result = await getTournaments();
       if (result.success) {
-        setTournaments(result.tournaments ?? []);
+        setTournaments(
+          (result.tournaments ?? []).map((tournament: any) => ({
+            ...tournament,
+            players: (tournament.players ?? []).map((player: any) => ({
+              agents: [],
+              ...player,
+            })),
+          }))
+        );
       } else {
         toast({
           title: "Error",
@@ -106,13 +115,25 @@ export default function DashboardPage() {
       <div className="container mx-auto py-8 px-4">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">Welcome, {session?.user?.name}</h1>
-          <Button
-            variant="outline"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="text-sm"
-          >
-            Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            {session?.user?.role === "ADMIN" && (
+              <Link href="/admin">
+                <Button
+                  variant="outline"
+                  className="text-sm hover:border-blue-600 hover:text-blue-600 hover:bg-transparent hover:shadow-sm hover:shadow-blue-600 transition-all duration-200"
+                >
+                  Admin
+                </Button>
+              </Link>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="text-sm hover:border-red-600 hover:text-red-600 hover:bg-transparent hover:shadow-sm hover:shadow-red-600 transition-all duration-200"
+            >
+              Logout
+            </Button>
+          </div>
         </div>
         <Tabs defaultValue="tournaments" className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-2 mb-8">
