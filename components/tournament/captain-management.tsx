@@ -188,11 +188,22 @@ export function CaptainManagement({ tournamentId }: CaptainManagementProps) {
                 <SelectValue placeholder="Select user" />
               </SelectTrigger>
               <SelectContent>
-                {availableUsers?.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.name}
-                  </SelectItem>
-                ))}
+                {isLoading ? (
+                  <div className="flex items-center px-3 py-2 text-muted-foreground">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+                    Loading users...
+                  </div>
+                ) : availableUsers && availableUsers.length > 0 ? (
+                  availableUsers.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-muted-foreground">
+                    No users available
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </div>

@@ -152,16 +152,6 @@ export default function DashboardPage() {
                   <p className="text-muted-foreground mb-6">
                     You haven't joined any tournaments yet.
                   </p>
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      document
-                        .querySelector('[data-value="join"]')
-                        ?.dispatchEvent(new MouseEvent("click"))
-                    }
-                  >
-                    Join a Tournament
-                  </Button>
                 </div>
               ) : (
                 tournaments.map((tournament) => (

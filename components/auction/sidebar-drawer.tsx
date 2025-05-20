@@ -81,7 +81,7 @@ export function SidebarDrawer({ isSidebarOpen, toggleSidebar, sidebarTab, setSid
                     </p>
                   </div>
                   <Badge variant="outline" className="px-3 py-1">
-                    {selectedCaptain.players.length}/5 Players
+                    {selectedCaptain.players.length+1}/5 Players
                   </Badge>
                 </div>
 
@@ -91,7 +91,7 @@ export function SidebarDrawer({ isSidebarOpen, toggleSidebar, sidebarTab, setSid
                   {/* Captain as a player */}
                   <div className="p-4 rounded-lg border bg-card/50 hover:bg-card/80 transition-colors mb-4">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className={getTierBadgeClass(selectedCaptain.tier)}>{selectedCaptain.tier}</div>
+                      <div className={`${getTierBadgeClass(selectedCaptain.tier)} px-3 rounded-full`}>Tier {selectedCaptain.tier}</div>
                       <h4 className="font-medium">{selectedCaptain.user.name} (Captain)</h4>
                       <Badge className={getRoleBadgeClass(selectedCaptain.role)}>{selectedCaptain.role}</Badge>
                     </div>
@@ -118,7 +118,7 @@ export function SidebarDrawer({ isSidebarOpen, toggleSidebar, sidebarTab, setSid
                           className="p-4 rounded-lg border bg-card hover:bg-card/80 transition-colors"
                         >
                           <div className="flex items-center gap-3 mb-2">
-                            <div className={getTierBadgeClass(player.tier)}>{player.tier}</div>
+                            <div className={`${getTierBadgeClass(player.tier)} px-3 rounded-full`}>Tier {player.tier}</div>
                             <h4 className="font-medium">{player.name}</h4>
                             <Badge className={getRoleBadgeClass(player.role)}>{player.role}</Badge>
                           </div>

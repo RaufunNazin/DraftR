@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSocketStore } from "@/lib/socket"
+import { useAuctionState, useSocketStore } from "@/lib/socket"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useSession } from "next-auth/react"
 import { DollarSign, Gavel, Layers, Menu, SkipForward, Trophy, Users } from "lucide-react"
 import { formatCredits, canCaptainBid } from "@/lib/utils"
 import { BID_INCREMENTS } from "@/lib/constants"
@@ -20,7 +21,9 @@ interface AuctionRoomProps {
 }
 
 export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId, toggleSidebar }: AuctionRoomProps) {
-  const { auctionState, startAuction, placeBid, voteToSkip } = useSocketStore()
+  const { startAuction, placeBid, voteToSkip } = useSocketStore()
+  const auctionState = useAuctionState()
+  const { data: session, status } = useSession()
 
   const [timePercent, setTimePercent] = useState(100)
 
@@ -69,6 +72,9 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
 
   const hasVotedToSkip = auctionState?.skipVotes.includes(selectedCaptainId || "") || false
 
+  // Calculate skip vote threshold
+  const skipVotesNeeded = auctionState?.captains.length ? Math.ceil(auctionState.captains.length / 2) : 0
+
   if (!auctionState) return null
 
   return (
@@ -78,14 +84,16 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
           <Button variant="outline" size="icon" onClick={toggleSidebar}>
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold">Valorant Auction</h1>
+          <h1 className="text-2xl font-bold">Auction Room</h1>
         </div>
 
         <div className="flex items-center gap-4">
-          <Badge variant="outline" className="px-3 py-1 text-sm flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            <span>Captains: {auctionState.captains.length}</span>
-          </Badge>
+          {session?.user?.role === "ADMIN" && (
+            <Badge variant="outline" className="px-3 py-1 text-sm flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span>Captains: {auctionState.captains.length}</span>
+            </Badge>
+          )}
 
           <Badge variant="outline" className="px-3 py-1 text-sm flex items-center gap-2">
             <Layers className="h-4 w-4" />
@@ -125,7 +133,7 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
                   {auctionState.isActive ? "Auction Complete" : "Waiting to Start"}
                 </h2>
                 <p className="text-muted-foreground">
-                  {auctionState.isActive ? "All players have been drafted!" : "Click 'Start Auction' to begin"}
+                  {session?.user?.role === "ADMIN" && "Click 'Start Auction' to begin"}
                 </p>
               </div>
             </Card>
@@ -140,7 +148,7 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
                 {selectedCaptain && (
                   <div className="mb-4">
                     <div className="flex items-center gap-3">
-                      <Avatar className={`captain-avatar captain-tier-${selectedCaptain.tier}`}>
+                      <Avatar className={getCaptainAvatarClass(selectedCaptain.tier)}>
                         <AvatarFallback>{selectedCaptain.user.name.substring(0, 2)}</AvatarFallback>
                       </Avatar>
                       <div>
@@ -179,7 +187,7 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
                         {selectedCaptain.tier === auctionState.currentPlayer.tier
                           ? "You cannot bid on your own tier"
                           : auctionState.currentPlayer &&
-                            selectedCaptain.pickedTiers.some((pt) => pt.tier === auctionState.currentPlayer!.tier)
+                              selectedCaptain.pickedTiers.some((pt) => pt.tier === auctionState.currentPlayer!.tier)
                             ? "You already have a player from this tier"
                             : selectedCaptain.credits < auctionState.currentBid
                               ? "Not enough credits"
@@ -190,7 +198,7 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
 
                   <div className="space-y-3">
                     <h4 className="text-sm font-medium">
-                      Skip Vote ({auctionState.skipVotes.length}/{Math.ceil(auctionState.captains.length / 2)} needed)
+                      Skip Vote ({auctionState.skipVotes.length}/{skipVotesNeeded} needed)
                     </h4>
                     <Button
                       variant="outline"
@@ -212,4 +220,22 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
       </div>
     </div>
   )
+}
+
+// Helper function for captain avatar class
+function getCaptainAvatarClass(tier: number): string {
+  switch (tier) {
+    case 1:
+      return "bg-red-500 text-white"
+    case 2:
+      return "bg-orange-500 text-white"
+    case 3:
+      return "bg-yellow-500 text-white"
+    case 4:
+      return "bg-green-500 text-white"
+    case 5:
+      return "bg-blue-500 text-white"
+    default:
+      return "bg-purple-500 text-white"
+  }
 }

@@ -32,7 +32,7 @@ export function CurrentPlayerCard({
           {/* Player Info */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <div className={getTierBadgeClass(player.tier)}>{player.tier}</div>
+              <div className={`${getTierBadgeClass(player.tier)} rounded-full px-4`}>Tier {player.tier}</div>
               <h2 className="text-2xl font-bold">{player.name}</h2>
               <Badge className={getRoleBadgeClass(player.role)}>{player.role}</Badge>
             </div>
@@ -52,9 +52,9 @@ export function CurrentPlayerCard({
             <div className="mb-6">
               <div className="text-sm text-muted-foreground mb-2">Top Agents</div>
               <div className="flex flex-wrap gap-2">
-                {player.agents.map((agent) => (
-                  <Badge key={agent} variant="outline" className="px-3 py-1">
-                    {agent}
+                {player.agents.map((agent, i) => (
+                  <Badge key={i} variant="outline" className="px-3 py-1">
+                    {agent.agent}
                   </Badge>
                 ))}
               </div>
@@ -66,10 +66,10 @@ export function CurrentPlayerCard({
               {currentBidder ? (
                 <div className="flex items-center gap-3">
                   <Avatar className={`captain-avatar captain-tier-${currentBidder.tier}`}>
-                    <AvatarFallback>{currentBidder.name.substring(0, 2)}</AvatarFallback>
+                    <AvatarFallback>{currentBidder.user.name.substring(0, 2)}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="font-medium">{currentBidder.name}</div>
+                    <div className="font-medium">{currentBidder.user.name}</div>
                     <div className="text-xs text-muted-foreground">
                       Tier {currentBidder.tier} Captain • {formatCredits(currentBidder.credits)} credits remaining
                     </div>
