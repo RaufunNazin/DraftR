@@ -92,6 +92,8 @@ export async function getTournamentById(id: string) {
           select: {
             id: true,
             name: true,
+            email: true,
+            role: true
           },
         },
         players: {

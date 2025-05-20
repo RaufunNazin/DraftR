@@ -52,6 +52,12 @@ export default function TournamentDetailPage({
               tier: String(player.tier) as any, // or use your Tier enum/casting here
             })),
           })),
+          host: {
+            id: result.tournament.host.id,
+            name: result.tournament.host.name,
+            email: result.tournament.host.email,
+            role: result.tournament.host.role,
+          },
         };
         setTournament(mappedTournament);
       } else {
