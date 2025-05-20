@@ -32,7 +32,7 @@ export function CurrentPlayerCard({
           {/* Player Info */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <div className={`${getTierBadgeClass(player.tier)} rounded-full px-4`}>Tier {player.tier}</div>
+              <div className={`${getTierBadgeClass(player.tier)} px-3 rounded-md`}>Tier {player.tier}</div>
               <h2 className="text-2xl font-bold">{player.name}</h2>
               <Badge className={getRoleBadgeClass(player.role)}>{player.role}</Badge>
             </div>
@@ -52,11 +52,15 @@ export function CurrentPlayerCard({
             <div className="mb-6">
               <div className="text-sm text-muted-foreground mb-2">Top Agents</div>
               <div className="flex flex-wrap gap-2">
-                {player.agents.map((agent, i) => (
-                  <Badge key={i} variant="outline" className="px-3 py-1">
-                    {agent.agent}
-                  </Badge>
-                ))}
+                {player.agents ? (
+                  player.agents.map((agent, i) => (
+                    <Badge key={i} variant="outline" className="px-3 py-1">
+                      {typeof agent === "string" ? agent : agent.agent}
+                    </Badge>
+                  ))
+                ) : (
+                  <div className="text-sm text-muted-foreground">Loading agents...</div>
+                )}
               </div>
             </div>
 

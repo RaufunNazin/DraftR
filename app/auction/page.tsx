@@ -66,9 +66,9 @@ export default function AuctionPage() {
               // Set user role based on session
               if (session?.user?.role === "ADMIN") {
                 setUserRole("ADMIN")
-              } else if (tournamentResult.tournament.hostId === session?.user?.id) {
+              } else if (tournamentResult.tournament && tournamentResult.tournament.hostId === session?.user?.id) {
                 setUserRole("HOST")
-              } else {
+              } else if (tournamentResult.tournament) {
                 // Check if user is a captain
                 const isCaptain = tournamentResult.tournament.captains.some(
                   (captain) => captain.user.id === session?.user?.id,

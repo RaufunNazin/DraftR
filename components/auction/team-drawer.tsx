@@ -27,7 +27,6 @@ export function TeamDrawer() {
             {auctionState.captains.map((captain) => (
               <TabsTrigger key={captain.id} value={captain.id} className="flex items-center gap-2">
                 <Avatar className={getCaptainAvatarClass(captain.tier)}>
-                  <AvatarImage src={captain.avatar || "/placeholder.svg"} alt={captain.user.name} />
                   <AvatarFallback>{captain.user.name.substring(0, 2)}</AvatarFallback>
                 </Avatar>
                 <span>{captain.user.name}</span>
@@ -67,11 +66,12 @@ export function TeamDrawer() {
                         </div>
 
                         <div className="flex flex-wrap gap-2 mt-2">
-                          {player.agents.map((agent, i) => (
-                            <Badge key={i} variant="outline" className="px-2 py-0.5 text-xs">
-                              {agent.agent}
-                            </Badge>
-                          ))}
+                          {player.agents &&
+                            player.agents.map((agent, i) => (
+                              <Badge key={i} variant="outline" className="px-2 py-0.5 text-xs">
+                                {typeof agent === "string" ? agent : agent.agent}
+                              </Badge>
+                            ))}
                         </div>
                       </div>
                     ))}

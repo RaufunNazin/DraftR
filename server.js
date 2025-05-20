@@ -884,7 +884,7 @@ async function selectNextPlayer(auctionId, tournamentCode, io) {
         tier: nextPlayer.tier,
         role: nextPlayer.role,
         startingPrice: nextPlayer.startingPrice,
-        agents: nextPlayer.agents.map((a) => a.agent),
+        agents: nextPlayer.agents.map((a) => (typeof a === "string" ? a : a.agent)),
       },
       currentBid: nextPlayer.startingPrice,
       currentBidder: null,

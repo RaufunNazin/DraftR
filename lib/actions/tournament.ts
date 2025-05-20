@@ -42,7 +42,7 @@ export async function createTournament(name: string) {
 
   try {
     // Generate a unique tournament code
-    let code: string = ""
+    let code = ""
     let isCodeUnique = false
 
     while (!isCodeUnique) {
@@ -92,8 +92,6 @@ export async function getTournamentById(id: string) {
           select: {
             id: true,
             name: true,
-            email: true,
-            role: true,
           },
         },
         players: {
@@ -150,8 +148,6 @@ export async function getTournamentByCode(code: string) {
           select: {
             id: true,
             name: true,
-            email: true,
-            role: true,
           },
         },
         players: {
@@ -211,8 +207,6 @@ export async function getTournaments() {
             select: {
               id: true,
               name: true,
-              email: true,
-              role: true,
             },
           },
           players: true,
@@ -247,8 +241,6 @@ export async function getTournaments() {
             select: {
               id: true,
               name: true,
-              email: true,
-              role: true,
             },
           },
           players: true,
@@ -346,15 +338,79 @@ export async function deleteTournament(id: string) {
     // Check if tournament exists
     const tournament = await prisma.tournament.findUnique({
       where: { id },
+      include: {
+        captains: true,
+        players: true,
+      },
     })
 
     if (!tournament) {
       return { success: false, error: "Tournament not found" }
     }
 
-    // Delete tournament
-    await prisma.tournament.delete({
-      where: { id },
+    // Use a transaction to ensure all related data is properly cleaned up
+    await prisma.$transaction(async (tx) => {
+      // Delete auction history if it exists
+      const auction = await tx.auction.findUnique({
+        where: { tournamentId: id },
+      })
+
+      if (auction) {
+        await tx.auctionHistory.deleteMany({
+          where: { auctionId: auction.id },
+        })
+
+        await tx.auctionBid.deleteMany({
+          where: { auctionId: auction.id },
+        })
+
+        await tx.auctionSkipVote.deleteMany({
+          where: { auctionId: auction.id },
+        })
+
+        await tx.auction.delete({
+          where: { id: auction.id },
+        })
+      }
+
+      // Delete captain picked tiers
+      for (const captain of tournament.captains) {
+        await tx.captainPickedTier.deleteMany({
+          where: { captainId: captain.id },
+        })
+      }
+
+      // Delete player agents
+      for (const player of tournament.players) {
+        await tx.playerAgent.deleteMany({
+          where: { playerId: player.id },
+        })
+      }
+
+      // Delete players
+      await tx.player.deleteMany({
+        where: { tournamentId: id },
+      })
+
+      // Delete captains
+      await tx.captain.deleteMany({
+        where: { tournamentId: id },
+      })
+
+      // Remove tournament participants
+      await tx.tournament.update({
+        where: { id },
+        data: {
+          participants: {
+            set: [],
+          },
+        },
+      })
+
+      // Finally delete the tournament
+      await tx.tournament.delete({
+        where: { id },
+      })
     })
 
     revalidatePath("/admin")
