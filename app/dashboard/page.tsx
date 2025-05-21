@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import Link from "next/link"
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -143,8 +143,17 @@ export default function DashboardPage() {
                       <CardTitle>{tournament.name}</CardTitle>
                       <CardDescription>
                         Status:{" "}
-                        {tournament.status.charAt(0).toUpperCase() +
-                          tournament.status.slice(1)}
+                        <span
+                          className={`${
+                            tournament.status == "UPCOMING"
+                              ? "text-yellow-500/80"
+                              : tournament.status == "ACTIVE"
+                              ? "text-blue-500/80"
+                              : "text-green-500/80"
+                          }`}
+                        >
+                          {tournament.status}
+                        </span>
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -173,7 +182,9 @@ export default function DashboardPage() {
                       >
                         {tournament.status === "ACTIVE"
                           ? "Join Auction"
-                          : "View Tournament"}
+                          : tournament.status === "UPCOMING"
+                          ? "Join The Lobby"
+                          : "View Final Teams"}
                       </Button>
                     </CardFooter>
                   </Card>

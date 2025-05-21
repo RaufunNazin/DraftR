@@ -1,24 +1,34 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
-import { useSocketStore } from "@/lib/socket"
-import { AuctionRoom } from "@/components/auction/auction-room"
-import { SidebarDrawer } from "@/components/auction/sidebar-drawer"
-import { HostControls } from "@/components/auction/host-controls"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
-import { getTournamentByCode, joinTournamentByCode } from "@/lib/actions/tournament"
-import type { UserRole } from "@/lib/types"
-import { toast } from 'react-toastify'
+import { useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useSocketStore } from "@/lib/socket";
+import { AuctionRoom } from "@/components/auction/auction-room";
+import { SidebarDrawer } from "@/components/auction/sidebar-drawer";
+import { HostControls } from "@/components/auction/host-controls";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import {
+  getTournamentByCode,
+  joinTournamentByCode,
+} from "@/lib/actions/tournament";
+import type { TournamentStatus, UserRole } from "@/lib/types";
+import { toast } from "react-toastify";
 
 export default function AuctionPage() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const tournamentCode = searchParams.get("tournament")
-  const { data: session, status } = useSession()
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tournamentCode = searchParams.get("tournament");
+  const { data: session, status } = useSession();
 
   const {
     connect,
@@ -26,111 +36,134 @@ export default function AuctionPage() {
     isConnected,
     auctionState,
     error: socketError,
-  } = useSocketStore()
+  } = useSocketStore();
 
-  const [userRole, setUserRole] = useState<UserRole>("AUDIENCE")
-  const [selectedCaptainId, setSelectedCaptainId] = useState<string | null>(null)
-  const [isInitializing, setIsInitializing] = useState(true)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [sidebarTab, setSidebarTab] = useState<"roster" | "history">("roster")
+  const [userRole, setUserRole] = useState<UserRole>("AUDIENCE");
+  const [selectedCaptainId, setSelectedCaptainId] = useState<string | null>(
+    null
+  );
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<"roster" | "history">("roster");
+  const [tournamentStatus, setTournamentStatus] =
+    useState<TournamentStatus>("UPCOMING");
+  const [tournamentName, setTournamentName] = useState<string>("");
 
   // Check authentication
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push(`/login?callbackUrl=/auction?tournament=${tournamentCode}`)
+      router.push(`/login?callbackUrl=/auction?tournament=${tournamentCode}`);
     }
-  }, [status, router, tournamentCode])
+  }, [status, router, tournamentCode]);
 
   // Initialize socket connection
   useEffect(() => {
     if (status === "authenticated" && !isConnected) {
-      connect()
+      connect();
     }
-  }, [connect, isConnected, status])
+  }, [connect, isConnected, status]);
 
   // Join tournament if code is provided
   useEffect(() => {
     const initializeAuction = async () => {
       if (status === "authenticated" && isConnected && tournamentCode) {
         try {
-          console.log("Initializing auction with tournament code:", tournamentCode)
+          console.log(
+            "Initializing auction with tournament code:",
+            tournamentCode
+          );
           // Join tournament in database
-          const result = await joinTournamentByCode(tournamentCode)
+          const result = await joinTournamentByCode(tournamentCode);
 
           if (result.success) {
             // Get tournament details
-            const tournamentResult = await getTournamentByCode(tournamentCode)
+            const tournamentResult = await getTournamentByCode(tournamentCode);
 
-            if (tournamentResult.success) {
+            if (tournamentResult.success && tournamentResult.tournament) {
               // Set user role based on session
+              setTournamentStatus(tournamentResult.tournament.status);
+              setTournamentName(tournamentResult.tournament.name)
               if (session?.user?.role === "ADMIN") {
-                setUserRole("ADMIN")
-              } else if (tournamentResult.tournament && tournamentResult.tournament.hostId === session?.user?.id) {
-                setUserRole("HOST")
+                setUserRole("ADMIN");
+              } else if (
+                tournamentResult.tournament &&
+                tournamentResult.tournament.hostId === session?.user?.id
+              ) {
+                setUserRole("HOST");
               } else if (tournamentResult.tournament) {
                 // Check if user is a captain
                 const isCaptain = tournamentResult.tournament.captains.some(
-                  (captain) => captain.user.id === session?.user?.id,
-                )
+                  (captain) => captain.user.id === session?.user?.id
+                );
 
                 if (isCaptain) {
-                  setUserRole("CAPTAIN")
+                  setUserRole("CAPTAIN");
                   // Set selected captain ID
                   const captain = tournamentResult.tournament.captains.find(
-                    (captain) => captain.user.id === session?.user?.id,
-                  )
+                    (captain) => captain.user.id === session?.user?.id
+                  );
                   if (captain) {
-                    setSelectedCaptainId(captain.id)
+                    setSelectedCaptainId(captain.id);
                   }
                 } else {
-                  setUserRole("AUDIENCE")
+                  setUserRole("AUDIENCE");
                 }
               }
 
               // Join tournament in socket
-              console.log("Joining socket tournament with code:", tournamentCode)
-              joinSocketTournament(tournamentCode)
+              console.log(
+                "Joining socket tournament with code:",
+                tournamentCode
+              );
+              joinSocketTournament(tournamentCode);
             } else {
-              toast.error(tournamentResult.error || "Failed to load tournament details")
+              toast.error(
+                tournamentResult.error || "Failed to load tournament details"
+              );
             }
           } else {
-            toast.error(result.error || "Failed to join tournament")
+            toast.error(result.error || "Failed to join tournament");
           }
         } catch (error) {
-          console.error("Error initializing auction:", error)
-          toast.error("Failed to initialize auction")
+          console.error("Error initializing auction:", error);
+          toast.error("Failed to initialize auction");
         } finally {
-          setIsInitializing(false)
+          setIsInitializing(false);
         }
       }
-    }
+    };
 
-    initializeAuction()
-  }, [isConnected, tournamentCode, status, session, joinSocketTournament, toast])
+    initializeAuction();
+  }, [
+    isConnected,
+    tournamentCode,
+    status,
+    session,
+    joinSocketTournament,
+    toast,
+  ]);
 
   // Handle socket errors
   useEffect(() => {
     if (socketError) {
-      toast.error(socketError || "Connection Error")
+      toast.error(socketError || "Connection Error");
     }
-  }, [socketError])
-
-  const handleRoleChange = (role: UserRole) => {
-    setUserRole(role)
-  }
+  }, [socketError]);
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
-  }
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
   if (status === "loading" || isInitializing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
         <h2 className="text-2xl font-bold">Connecting to Auction...</h2>
-        <p className="text-muted-foreground mt-2">Establishing connection to the tournament</p>
+        <p className="text-muted-foreground mt-2">
+          Establishing connection to the tournament
+        </p>
       </div>
-    )
+    );
   }
 
   if (!tournamentCode) {
@@ -139,21 +172,27 @@ export default function AuctionPage() {
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>No Tournament Selected</CardTitle>
-            <CardDescription>Please join a tournament to view the auction</CardDescription>
+            <CardDescription>
+              Please join a tournament to view the auction
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              You need to join a tournament using a tournament code to access the auction.
+              You need to join a tournament using a tournament code to access
+              the auction.
             </p>
           </CardContent>
           <CardFooter>
-            <Button onClick={() => router.push("/dashboard")} className="w-full">
+            <Button
+              onClick={() => router.push("/dashboard")}
+              className="w-full"
+            >
               Go to Dashboard
             </Button>
           </CardFooter>
         </Card>
       </div>
-    )
+    );
   }
 
   if (!auctionState) {
@@ -162,14 +201,15 @@ export default function AuctionPage() {
         <div className="text-center max-w-md">
           <h2 className="text-2xl font-bold mb-4">No Auction Data</h2>
           <p className="text-muted-foreground mb-6">
-            Unable to load auction data. Please try again or join a different tournament.
+            Unable to load auction data. Please try again or join a different
+            tournament.
           </p>
           <Button asChild>
             <a href="/dashboard">Return to Dashboard</a>
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -180,16 +220,22 @@ export default function AuctionPage() {
           selectedCaptainId={selectedCaptainId}
           setSelectedCaptainId={setSelectedCaptainId}
           toggleSidebar={toggleSidebar}
+          status={tournamentStatus}
+          tournamentName={tournamentName}
         />
-        <SidebarDrawer
-          isSidebarOpen={isSidebarOpen}
-          toggleSidebar={toggleSidebar}
-          sidebarTab={sidebarTab}
-          setSidebarTab={setSidebarTab}
-        />
+        {tournamentStatus !== "COMPLETED" && (
+          <SidebarDrawer
+            isSidebarOpen={isSidebarOpen}
+            toggleSidebar={toggleSidebar}
+            sidebarTab={sidebarTab}
+            setSidebarTab={setSidebarTab}
+          />
+        )}
       </div>
-
-      {(userRole === "HOST" || userRole === "ADMIN") && <HostControls />}
+      {(userRole === "HOST" || userRole === "ADMIN") &&
+        tournamentStatus == "ACTIVE" && (
+          <HostControls status={tournamentStatus} />
+        )}
     </div>
-  )
+  );
 }

@@ -1,48 +1,72 @@
-"use client"
-import { useState, useEffect } from "react"
-import { useSocketStore } from "@/lib/socket"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { formatCredits, getRoleBadgeClass, getTierBadgeClass } from "@/lib/utils"
-import { History } from "lucide-react"
+"use client";
+import { useState, useEffect } from "react";
+import { useSocketStore } from "@/lib/socket";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  formatCredits,
+  getRoleBadgeClass,
+  getTierBadgeClass,
+} from "@/lib/utils";
+import { History } from "lucide-react";
 
 interface SidebarDrawerProps {
-  isSidebarOpen: boolean
-  toggleSidebar: () => void
-  sidebarTab: "roster" | "history"
-  setSidebarTab: (tab: "roster" | "history") => void
+  isSidebarOpen: boolean;
+  toggleSidebar: () => void;
+  sidebarTab: "roster" | "history";
+  setSidebarTab: (tab: "roster" | "history") => void;
 }
 
-export function SidebarDrawer({ isSidebarOpen, toggleSidebar, sidebarTab, setSidebarTab }: SidebarDrawerProps) {
-  const { auctionState } = useSocketStore()
-  const [selectedCaptainId, setSelectedCaptainId] = useState("")
+export function SidebarDrawer({
+  isSidebarOpen,
+  toggleSidebar,
+  sidebarTab,
+  setSidebarTab,
+}: SidebarDrawerProps) {
+  const { auctionState } = useSocketStore();
+  const [selectedCaptainId, setSelectedCaptainId] = useState("");
 
   // Set initial captain when auction state loads
   useEffect(() => {
     if (auctionState?.captains.length && !selectedCaptainId) {
-      setSelectedCaptainId(auctionState.captains[0].id)
+      setSelectedCaptainId(auctionState.captains[0].id);
     }
-  }, [auctionState?.captains, selectedCaptainId])
+  }, [auctionState?.captains, selectedCaptainId]);
 
-  const selectedCaptain = auctionState?.captains.find((c) => c.id === selectedCaptainId)
+  const selectedCaptain = auctionState?.captains.find(
+    (c) => c.id === selectedCaptainId
+  );
 
-  if (!auctionState) return null
+  if (!auctionState) return null;
 
   return (
     <Sheet open={isSidebarOpen} onOpenChange={toggleSidebar}>
       <SheetContent side="left" className="w-[350px] sm:w-[450px] p-0">
         <SheetHeader className="p-6 pb-2">
-          <SheetTitle>Tournament Information</SheetTitle>
+          <SheetTitle>Auction Information</SheetTitle>
         </SheetHeader>
 
         <Tabs
           value={sidebarTab}
-          onValueChange={(value) => setSidebarTab(value as "roster" | "history")}
+          onValueChange={(value) =>
+            setSidebarTab(value as "roster" | "history")
+          }
           className="w-full"
         >
           <TabsList className="w-full justify-start px-6">
@@ -52,7 +76,10 @@ export function SidebarDrawer({ isSidebarOpen, toggleSidebar, sidebarTab, setSid
 
           <TabsContent value="roster" className="p-6 pt-4">
             <div className="mb-4">
-              <Select value={selectedCaptainId} onValueChange={setSelectedCaptainId}>
+              <Select
+                value={selectedCaptainId}
+                onValueChange={setSelectedCaptainId}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select captain" />
                 </SelectTrigger>
@@ -60,8 +87,12 @@ export function SidebarDrawer({ isSidebarOpen, toggleSidebar, sidebarTab, setSid
                   {auctionState.captains.map((captain) => (
                     <SelectItem key={captain.id} value={captain.id}>
                       <div className="flex items-center gap-2">
-                        <Avatar className={`captain-avatar captain-tier-${captain.tier} h-6 w-6`}>
-                          <AvatarFallback>{captain.user.name.substring(0, 2)}</AvatarFallback>
+                        <Avatar
+                          className={`captain-avatar captain-tier-${captain.tier} h-6 w-6`}
+                        >
+                          <AvatarFallback>
+                            {captain.user.name.substring(0, 2)}
+                          </AvatarFallback>
                         </Avatar>
                         <span>{captain.user.name}</span>
                       </div>
@@ -75,13 +106,16 @@ export function SidebarDrawer({ isSidebarOpen, toggleSidebar, sidebarTab, setSid
               <>
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-bold">{selectedCaptain.user.name}'s Team</h3>
+                    <h3 className="text-lg font-bold">
+                      {selectedCaptain.user.name}'s Team
+                    </h3>
                     <p className="text-sm text-muted-foreground">
-                      Tier {selectedCaptain.tier} Captain • {formatCredits(selectedCaptain.credits)} credits remaining
+                      T{selectedCaptain.tier} Captain •{" "}
+                      {formatCredits(selectedCaptain.credits)} credits left
                     </p>
                   </div>
                   <Badge variant="outline" className="px-3 py-1">
-                    {selectedCaptain.players.length+1}/5 Players
+                    {selectedCaptain.players.length + 1}/5 Players
                   </Badge>
                 </div>
 
@@ -91,14 +125,30 @@ export function SidebarDrawer({ isSidebarOpen, toggleSidebar, sidebarTab, setSid
                   {/* Captain as a player */}
                   <div className="p-4 rounded-lg border bg-card/50 hover:bg-card/80 transition-colors mb-4">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className={`${getTierBadgeClass(selectedCaptain.tier)} px-3 rounded-full`}>Tier {selectedCaptain.tier}</div>
-                      <h4 className="font-medium">{selectedCaptain.user.name} (Captain)</h4>
-                      <Badge className={getRoleBadgeClass(selectedCaptain.role)}>{selectedCaptain.role}</Badge>
+                      <div
+                        className={`${getTierBadgeClass(
+                          selectedCaptain.tier
+                        )} px-3 rounded-full`}
+                      >
+                        T{selectedCaptain.tier}
+                      </div>
+                      <h4 className="font-medium">
+                        {selectedCaptain.user.name} (Captain)
+                      </h4>
+                      <Badge
+                        className={getRoleBadgeClass(selectedCaptain.role)}
+                      >
+                        {selectedCaptain.role}
+                      </Badge>
                     </div>
 
                     <div className="flex flex-wrap gap-2 mt-2">
                       {selectedCaptain.agents.map((agentObj) => (
-                        <Badge key={agentObj.id} variant="outline" className="px-2 py-0.5 text-xs">
+                        <Badge
+                          key={agentObj.id}
+                          variant="outline"
+                          className="px-2 py-0.5 text-xs"
+                        >
                           {agentObj.agent}
                         </Badge>
                       ))}
@@ -112,26 +162,40 @@ export function SidebarDrawer({ isSidebarOpen, toggleSidebar, sidebarTab, setSid
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {selectedCaptain.players.map((player) => (
-                        <div
-                          key={player.id}
-                          className="p-4 rounded-lg border bg-card hover:bg-card/80 transition-colors"
-                        >
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className={`${getTierBadgeClass(player.tier)} px-3 rounded-full`}>Tier {player.tier}</div>
-                            <h4 className="font-medium">{player.name}</h4>
-                            <Badge className={getRoleBadgeClass(player.role)}>{player.role}</Badge>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {player.agents.map((agentObj) => (
-                              <Badge key={agentObj.id} variant="outline" className="px-2 py-0.5 text-xs">
-                                {agentObj.agent}
+                      {selectedCaptain.players
+                        .sort((a, b) => a.tier - b.tier)
+                        .map((player) => (
+                          <div
+                            key={player.id}
+                            className="p-4 rounded-lg border bg-card transition-colors"
+                          >
+                            <div className="flex items-center gap-3 mb-2">
+                              <div
+                                className={`${getTierBadgeClass(
+                                  player.tier
+                                )} px-3 rounded-full`}
+                              >
+                                T{player.tier}
+                              </div>
+                              <h4 className="font-medium">{player.name}</h4>
+                              <Badge className={getRoleBadgeClass(player.role)}>
+                                {player.role}
                               </Badge>
-                            ))}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {player.agents.map((agentObj) => (
+                                <Badge
+                                  key={agentObj.id}
+                                  variant="outline"
+                                  className="px-2 py-0.5 text-xs"
+                                >
+                                  {agentObj.agent}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   )}
                 </ScrollArea>
@@ -161,7 +225,9 @@ export function SidebarDrawer({ isSidebarOpen, toggleSidebar, sidebarTab, setSid
                           {formatCredits(item.finalBid)}
                         </Badge>
                       </div>
-                      <div className="text-sm text-muted-foreground">Drafted by {item.captainName}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Drafted by {item.captainName}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -171,5 +237,5 @@ export function SidebarDrawer({ isSidebarOpen, toggleSidebar, sidebarTab, setSid
         </Tabs>
       </SheetContent>
     </Sheet>
-  )
+  );
 }

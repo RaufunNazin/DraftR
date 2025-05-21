@@ -5,10 +5,14 @@ import { useSocketStore } from "@/lib/socket"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertCircle, Eye, EyeOff, Gavel, Pause, Play, Shield, Timer } from "lucide-react"
-import type { BidMode } from "@/lib/types"
+import type { BidMode, TournamentStatus } from "@/lib/types"
 import { toast } from 'react-toastify'
 
-export function HostControls() {
+interface HostControlsProps {
+  status: TournamentStatus
+}
+
+export function HostControls({status}: HostControlsProps) {
   const { auctionState, changeBidMode, togglePause, startAuction } = useSocketStore()
 
   const handleChangeBidMode = (mode: BidMode) => {
@@ -43,7 +47,7 @@ export function HostControls() {
         </div>
 
         <div className="flex items-center gap-4">
-          {!auctionState.isActive && (
+          {!auctionState.isActive && status == "UPCOMING" && (
             <Button
               onClick={handleStartAuction}
               className="bg-gradient-to-r from-red-500 to-purple-600 hover:from-red-600 hover:to-purple-700"
