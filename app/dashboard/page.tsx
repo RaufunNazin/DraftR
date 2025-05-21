@@ -18,15 +18,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Trophy, Users } from "lucide-react";
 import { getTournaments, joinTournamentByCode } from "@/lib/actions/tournament";
 import type { Tournament } from "@/lib/types";
+import { toast } from "react-toastify";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const { toast } = useToast();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tournamentCode, setTournamentCode] = useState("");
@@ -55,18 +54,10 @@ export default function DashboardPage() {
           }))
         );
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to load tournaments",
-          variant: "destructive",
-        });
+        toast.error(result.error || "Failed to load tournaments");
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load tournaments",
-        variant: "destructive",
-      });
+      toast.error("Failed to load tournaments");
     } finally {
       setIsLoading(false);
     }
@@ -79,24 +70,13 @@ export default function DashboardPage() {
     try {
       const result = await joinTournamentByCode(tournamentCode);
       if (result.success) {
-        toast({
-          title: "Success",
-          description: "You have joined the tournament",
-        });
+        toast.success("You have joined the tournament");
         router.push(`/auction?tournament=${tournamentCode}`);
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to join tournament",
-          variant: "destructive",
-        });
+        toast.error(result.error || "Failed to join tournament");
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to join tournament",
-        variant: "destructive",
-      });
+      toast.error("Failed to join tournament");
     } finally {
       setIsJoining(false);
     }

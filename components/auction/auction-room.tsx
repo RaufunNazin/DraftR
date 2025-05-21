@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useSession } from "next-auth/react"
-import { DollarSign, Gavel, Layers, Menu, SkipForward, Trophy, Users } from "lucide-react"
+import { DollarSign, Layers, Menu, SkipForward, Trophy, Users } from "lucide-react"
 import { formatCredits, canCaptainBid } from "@/lib/utils"
 import { BID_INCREMENTS } from "@/lib/constants"
 import { CurrentPlayerCard } from "./current-player-card"
@@ -21,9 +21,9 @@ interface AuctionRoomProps {
 }
 
 export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId, toggleSidebar }: AuctionRoomProps) {
-  const { startAuction, placeBid, voteToSkip } = useSocketStore()
+  const { placeBid, voteToSkip } = useSocketStore()
   const auctionState = useAuctionState()
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
 
   const [timePercent, setTimePercent] = useState(100)
 
@@ -40,11 +40,6 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
       setSelectedCaptainId(auctionState.captains[0].id)
     }
   }, [auctionState?.captains, selectedCaptainId, setSelectedCaptainId, userRole])
-
-  const handleStartAuction = () => {
-    console.log("Start auction button clicked")
-    startAuction()
-  }
 
   const handleBid = (increment: number) => {
     if (!selectedCaptainId || !auctionState?.currentPlayer) return
@@ -100,16 +95,6 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
             <Layers className="h-4 w-4" />
             <span>Mode: {auctionState.bidMode.charAt(0).toUpperCase() + auctionState.bidMode.slice(1)}</span>
           </Badge>
-
-          {(userRole === "ADMIN" || userRole === "HOST") && !auctionState.isActive && (
-            <Button
-              onClick={handleStartAuction}
-              className="bg-gradient-to-r from-red-500 to-purple-600 hover:from-red-600 hover:to-purple-700"
-            >
-              <Gavel className="mr-2 h-4 w-4" />
-              Start Auction
-            </Button>
-          )}
         </div>
       </div>
 
@@ -134,7 +119,7 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
                   {auctionState.isActive ? "Auction Complete" : "Waiting to Start"}
                 </h2>
                 <p className="text-muted-foreground">
-                  {session?.user?.role === "ADMIN" && "Click 'Start Auction' to begin"}
+                  {session?.user?.role === "ADMIN" ? "Click 'Start Auction' to begin" : "Please wait while the officials set up the auction."}
                 </p>
               </div>
             </Card>
@@ -164,7 +149,7 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
                 )}
 
                 {/* Bidding Controls */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                   <div className="space-y-3">
                     <h4 className="text-sm font-medium">Bidding</h4>
                     <div className="flex gap-2">
@@ -172,7 +157,7 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
                         <Button
                           key={increment}
                           variant="outline"
-                          className="flex-1 bid-button"
+                          className="flex-1 bid-button p-8 text-lg"
                           disabled={
                             !canBid || !auctionState.isActive || !auctionState.currentPlayer || auctionState.isPaused
                           }
@@ -203,7 +188,7 @@ export function AuctionRoom({ userRole, selectedCaptainId, setSelectedCaptainId,
                     </h4>
                     <Button
                       variant="outline"
-                      className="w-full"
+                      className="w-full border border-red-500/50"
                       disabled={
                         !auctionState.isActive || !auctionState.currentPlayer || hasVotedToSkip || auctionState.isPaused
                       }

@@ -10,13 +10,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "react-toastify"
 import { Loader2 } from "lucide-react"
 import { registerUser } from "@/lib/actions/auth"
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { toast } = useToast()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -29,11 +28,7 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Passwords do not match",
-        description: "Please make sure your passwords match",
-        variant: "destructive",
-      })
+      toast.error("Passwords do not match")
       setIsLoading(false)
       return
     }
@@ -42,24 +37,13 @@ export default function RegisterPage() {
       const result = await registerUser(name, email, password, role)
 
       if (result.success) {
-        toast({
-          title: "Registration Successful",
-          description: "Your account has been created",
-        })
+        toast.success("Registration Successful")
         router.push("/login")
       } else {
-        toast({
-          title: "Registration Failed",
-          description: result.error || "An error occurred during registration",
-          variant: "destructive",
-        })
+        toast.error("Registration Failed")
       }
     } catch (error) {
-      toast({
-        title: "Registration Failed",
-        description: "An error occurred during registration",
-        variant: "destructive",
-      })
+      toast.error("Registration Failed")
     } finally {
       setIsLoading(false)
     }

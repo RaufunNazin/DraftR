@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, UserPlus } from "lucide-react";
 import { ROLES, TIER_STARTING_CREDITS } from "@/lib/constants";
 import {
@@ -22,13 +21,13 @@ import {
   getAvailableUsers,
 } from "@/lib/actions/captain";
 import type { ViewCaptain, Captain, User, PlayerRole, Tier } from "@/lib/types";
+import { toast } from 'react-toastify'
 
 interface CaptainManagementProps {
   tournamentId: string;
 }
 
 export function CaptainManagement({ tournamentId }: CaptainManagementProps) {
-  const { toast } = useToast();
   const [captains, setCaptains] = useState<ViewCaptain[]>([]);
   const [availableUsers, setAvailableUsers] = useState<User[] | undefined>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,11 +64,7 @@ export function CaptainManagement({ tournamentId }: CaptainManagementProps) {
           }))
         );
       } else {
-        toast({
-          title: "Error",
-          description: captainsResult.error || "Failed to load captains",
-          variant: "destructive",
-        });
+        toast.error(captainsResult.error || "Failed to load captains");
       }
 
       // Load available users
@@ -77,18 +72,10 @@ export function CaptainManagement({ tournamentId }: CaptainManagementProps) {
       if (usersResult.success) {
         setAvailableUsers(usersResult.users);
       } else {
-        toast({
-          title: "Error",
-          description: usersResult.error || "Failed to load available users",
-          variant: "destructive",
-        });
+        toast.error(usersResult.error || "Failed to load available users");
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load data",
-        variant: "destructive",
-      });
+      toast.error("Failed to load data");
     } finally {
       setIsLoading(false);
     }
@@ -96,11 +83,7 @@ export function CaptainManagement({ tournamentId }: CaptainManagementProps) {
 
   const handleAssignCaptain = async () => {
     if (!selectedUserId || !tier || !role) {
-      toast({
-        title: "Missing information",
-        description: "Please select a user, tier, and role.",
-        variant: "destructive",
-      });
+      toast.error("Please select a user, tier, and role.");
       return;
     }
 
@@ -115,10 +98,7 @@ export function CaptainManagement({ tournamentId }: CaptainManagementProps) {
       );
 
       if (result.success) {
-        toast({
-          title: "Captain assigned",
-          description: "User has been assigned as a captain.",
-        });
+        toast.success("User has been assigned as a captain.");
 
         // Reset form
         setSelectedUserId("");
@@ -128,18 +108,10 @@ export function CaptainManagement({ tournamentId }: CaptainManagementProps) {
         // Reload data
         await loadData();
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to assign captain",
-          variant: "destructive",
-        });
+        toast.error(result.error || "Failed to assign captain");
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to assign captain",
-        variant: "destructive",
-      });
+      toast.error("Failed to assign captain");
     } finally {
       setIsSubmitting(false);
     }
@@ -150,26 +122,15 @@ export function CaptainManagement({ tournamentId }: CaptainManagementProps) {
       const result = await removeCaptain(captainId);
 
       if (result.success) {
-        toast({
-          title: "Captain removed",
-          description: "Captain has been removed from the tournament.",
-        });
+        toast.success("Captain has been removed from the tournament.");
 
         // Reload data
         await loadData();
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to remove captain",
-          variant: "destructive",
-        });
+        toast.error(result.error || "Failed to remove captain");
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to remove captain",
-        variant: "destructive",
-      });
+      toast.error("Failed to remove captain");
     }
   };
 

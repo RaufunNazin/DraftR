@@ -6,19 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertCircle, Eye, EyeOff, Gavel, Pause, Play, Shield, Timer } from "lucide-react"
 import type { BidMode } from "@/lib/types"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from 'react-toastify'
 
 export function HostControls() {
   const { auctionState, changeBidMode, togglePause, startAuction } = useSocketStore()
-  const { toast } = useToast()
 
   const handleChangeBidMode = (mode: BidMode) => {
     changeBidMode(mode)
 
-    toast({
-      title: "Bid Mode Changed",
-      description: `Bid mode set to ${mode}`,
-    })
+    toast.info(`Bid mode set to ${mode}`)
   }
 
   const handleTogglePause = () => {
@@ -26,20 +22,14 @@ export function HostControls() {
 
     togglePause(!auctionState.isPaused)
 
-    toast({
-      title: auctionState.isPaused ? "Auction Resumed" : "Auction Paused",
-      description: auctionState.isPaused ? "The auction has been resumed" : "The auction has been paused",
-    })
+    toast.info(auctionState.isPaused ? "Auction Resumed" : "Auction Paused")
   }
 
   const handleStartAuction = () => {
     console.log("Start auction button clicked in host controls")
     startAuction()
 
-    toast({
-      title: "Auction Started",
-      description: "The auction has been started",
-    })
+    toast.success("Auction Started")
   }
 
   if (!auctionState) return null

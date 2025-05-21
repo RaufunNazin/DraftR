@@ -1,10 +1,12 @@
 import type { Metadata } from "next"
 import "./globals.css"
-import { Providers } from "@/components/providers" // Adjust the path as needed
+import { Providers } from "@/components/providers"
+import { ToastContainer, Flip } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export const metadata: Metadata = {
   title: "Draftr",
-  description: "Real-time Valorant Tournament Auction UI",
+  description: "Real-time Player Auction",
 }
 
 export default function RootLayout({
@@ -15,6 +17,19 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover={false}
+        theme="dark"
+        transition={Flip}
+      />
         <Providers>{children}</Providers>
       </body>
     </html>

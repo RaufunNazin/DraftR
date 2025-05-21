@@ -8,13 +8,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
 import { Loader2 } from "lucide-react"
 import { createTournament } from "@/lib/actions/tournament"
+import { toast } from 'react-toastify'
 
 export default function NewTournamentPage() {
   const router = useRouter()
-  const { toast } = useToast()
   const [name, setName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
@@ -26,24 +25,13 @@ export default function NewTournamentPage() {
       const result = await createTournament(name)
 
       if (result.success) {
-        toast({
-          title: "Tournament Created",
-          description: `Tournament "${name}" created with code ${result.code}`,
-        })
+        toast.success(`Tournament "${name}" created with code ${result.code}`)
         router.push(`/admin/tournaments/${result.id}`)
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to create tournament",
-          variant: "destructive",
-        })
+        toast.error(result.error || "Failed to create tournament")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create tournament",
-        variant: "destructive",
-      })
+      toast.error("Failed to create tournament")
     } finally {
       setIsLoading(false)
     }
@@ -54,7 +42,7 @@ export default function NewTournamentPage() {
       <Card className="w-full max-w-md border-purple-500/20 shadow-lg">
         <CardHeader>
           <CardTitle>Create New Tournament</CardTitle>
-          <CardDescription>Set up a new Valorant auction tournament</CardDescription>
+          <CardDescription>Set up a new Esports auction tournament</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">

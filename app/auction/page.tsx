@@ -10,16 +10,15 @@ import { HostControls } from "@/components/auction/host-controls"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 import { getTournamentByCode, joinTournamentByCode } from "@/lib/actions/tournament"
 import type { UserRole } from "@/lib/types"
+import { toast } from 'react-toastify'
 
 export default function AuctionPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const tournamentCode = searchParams.get("tournament")
   const { data: session, status } = useSession()
-  const { toast } = useToast()
 
   const {
     connect,
@@ -92,26 +91,14 @@ export default function AuctionPage() {
               console.log("Joining socket tournament with code:", tournamentCode)
               joinSocketTournament(tournamentCode)
             } else {
-              toast({
-                title: "Error",
-                description: tournamentResult.error || "Failed to load tournament details",
-                variant: "destructive",
-              })
+              toast.error(tournamentResult.error || "Failed to load tournament details")
             }
           } else {
-            toast({
-              title: "Error",
-              description: result.error || "Failed to join tournament",
-              variant: "destructive",
-            })
+            toast.error(result.error || "Failed to join tournament")
           }
         } catch (error) {
           console.error("Error initializing auction:", error)
-          toast({
-            title: "Error",
-            description: "Failed to initialize auction",
-            variant: "destructive",
-          })
+          toast.error("Failed to initialize auction")
         } finally {
           setIsInitializing(false)
         }
@@ -124,13 +111,9 @@ export default function AuctionPage() {
   // Handle socket errors
   useEffect(() => {
     if (socketError) {
-      toast({
-        title: "Connection Error",
-        description: socketError,
-        variant: "destructive",
-      })
+      toast.error(socketError || "Connection Error")
     }
-  }, [socketError, toast])
+  }, [socketError])
 
   const handleRoleChange = (role: UserRole) => {
     setUserRole(role)

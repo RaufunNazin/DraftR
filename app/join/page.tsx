@@ -6,37 +6,28 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
-import { useAppStore } from "@/lib/store"
+import { toast } from 'react-toastify'
 import { emitSocketEvent } from "@/lib/socket"
 import { ArrowRight, Loader2 } from "lucide-react"
+import { joinTournamentByCode } from "@/lib/actions/tournament"
 
 export default function JoinPage() {
   const router = useRouter()
-  const { toast } = useToast()
-  const { joinTournament, loadMockTournaments } = useAppStore()
 
   const [tournamentCode, setTournamentCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   const handleJoinTournament = () => {
     if (!tournamentCode) {
-      toast({
-        title: "Missing tournament code",
-        description: "Please enter a tournament code to join.",
-        variant: "destructive",
-      })
+      toast.error("Missing tournament code")
       return
     }
 
     setIsLoading(true)
 
-    // Load mock tournaments if not already loaded
-    loadMockTournaments()
-
     // Simulate loading delay
-    setTimeout(() => {
-      const success = joinTournament(tournamentCode)
+    setTimeout(async () => {
+      const success = await joinTournamentByCode(tournamentCode)
 
       if (success) {
         // Emit socket event to join tournament
@@ -45,19 +36,12 @@ export default function JoinPage() {
           payload: { tournamentCode },
         })
 
-        toast({
-          title: "Tournament joined",
-          description: `You have joined tournament ${tournamentCode} as an audience member.`,
-        })
+        toast.success("Tournament joined")
 
         // Set user role to audience
         router.push("/auction")
       } else {
-        toast({
-          title: "Invalid tournament code",
-          description: "The tournament code you entered does not exist.",
-          variant: "destructive",
-        })
+        toast.error("Invalid tournament code")
       }
 
       setIsLoading(false)
@@ -76,14 +60,14 @@ export default function JoinPage() {
         <Card className="w-full max-w-md border-purple-500/20 shadow-lg">
           <CardHeader>
             <CardTitle>Enter Tournament Code</CardTitle>
-            <CardDescription>Join an existing tournament as an audience member</CardDescription>
+            <CardDescription>Join an existing tournament</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="code">Tournament Code</Label>
               <Input
                 id="code"
-                placeholder="Enter 4-character code (e.g., VCT23)"
+                placeholder="Enter 4-character code"
                 value={tournamentCode}
                 onChange={(e) => setTournamentCode(e.target.value.toUpperCase())}
                 maxLength={4}

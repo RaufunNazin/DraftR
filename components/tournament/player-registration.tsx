@@ -8,18 +8,17 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useToast } from "@/hooks/use-toast"
 import { Loader2, Plus, Trash2, X } from "lucide-react"
 import { AGENTS, ROLES } from "@/lib/constants"
 import { addPlayer, removePlayer, getPlayers } from "@/lib/actions/player"
 import type { Agent, Player, PlayerRole, Tier } from "@/lib/types"
+import { toast } from 'react-toastify'
 
 interface PlayerRegistrationProps {
   tournamentId: string
 }
 
 export function PlayerRegistration({ tournamentId }: PlayerRegistrationProps) {
-  const { toast } = useToast()
   const [players, setPlayers] = useState<Player[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -47,18 +46,10 @@ export function PlayerRegistration({ tournamentId }: PlayerRegistrationProps) {
           }))
         )
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to load players",
-          variant: "destructive",
-        })
+        toast.error(result.error || "Failed to load players")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load players",
-        variant: "destructive",
-      })
+      toast.error("Failed to load players")
     } finally {
       setIsLoading(false)
     }
@@ -76,11 +67,7 @@ export function PlayerRegistration({ tournamentId }: PlayerRegistrationProps) {
 
   const handleAddPlayer = async () => {
     if (!name || !tier || !role || selectedAgents.length === 0) {
-      toast({
-        title: "Missing information",
-        description: "Please fill in all fields and select at least one agent.",
-        variant: "destructive",
-      })
+      toast.error("Please fill in all fields and select at least one agent.")
       return
     }
 
@@ -90,10 +77,7 @@ export function PlayerRegistration({ tournamentId }: PlayerRegistrationProps) {
       const result = await addPlayer(tournamentId, name, tier, role, selectedAgents)
 
       if (result.success) {
-        toast({
-          title: "Player added",
-          description: "Player has been added to the tournament.",
-        })
+        toast.success("Player has been added to the tournament.")
 
         // Reset form
         setName("")
@@ -104,18 +88,10 @@ export function PlayerRegistration({ tournamentId }: PlayerRegistrationProps) {
         // Reload players
         await loadPlayers()
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to add player",
-          variant: "destructive",
-        })
+        toast.error(result.error || "Failed to add player")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add player",
-        variant: "destructive",
-      })
+      toast.error("Failed to add player")
     } finally {
       setIsSubmitting(false)
     }
@@ -126,26 +102,15 @@ export function PlayerRegistration({ tournamentId }: PlayerRegistrationProps) {
       const result = await removePlayer(playerId)
 
       if (result.success) {
-        toast({
-          title: "Player removed",
-          description: "Player has been removed from the tournament.",
-        })
+        toast.success("Player has been removed from the tournament.")
 
         // Reload players
         await loadPlayers()
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to remove player",
-          variant: "destructive",
-        })
+        toast.error(result.error || "Failed to remove player")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to remove player",
-        variant: "destructive",
-      })
+      toast.error("Failed to remove player")
     }
   }
 

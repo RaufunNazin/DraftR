@@ -17,12 +17,11 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from 'react-toastify'
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -39,24 +38,13 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        toast({
-          title: "Login Failed",
-          description: "Invalid email or password",
-          variant: "destructive",
-        });
+        toast.error("Login Failed");
       } else {
-        toast({
-          title: "Login Successful",
-          description: "You have been logged in",
-        });
+        toast.success("Login Successful");
         router.push("/dashboard");
       }
     } catch (error) {
-      toast({
-        title: "Login Failed",
-        description: "An error occurred during login",
-        variant: "destructive",
-      });
+      toast.error("Login Failed");
     } finally {
       setIsLoading(false);
     }

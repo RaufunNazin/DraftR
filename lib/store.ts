@@ -3,7 +3,6 @@ import { persist } from "zustand/middleware"
 import { v4 as uuidv4 } from "uuid"
 import type { Player, Captain, UserRole, Tournament } from "./types"
 import { TIER_STARTING_PRICES } from "./constants"
-import { useSession } from "next-auth/react"
 
 
 interface AppState {
@@ -24,7 +23,6 @@ interface AppState {
   // Tournament management
   tournaments: Tournament[]
   currentTournamentCode: string | null
-  createTournament: (name: string) => string // Returns tournament code
   joinTournament: (code: string) => boolean // Returns success status
   setCurrentTournamentCode: (code: string | null) => void
 
@@ -38,7 +36,6 @@ interface AppState {
   resetState: () => void
 }
 
-const { data: session, status } = useSession();
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -74,31 +71,6 @@ export const useAppStore = create<AppState>()(
       // Tournament management
       tournaments: [],
       currentTournamentCode: null,
-      createTournament: (name) => {
-        const code = generateTournamentCode()
-        const newTournament: Tournament = {
-          id: uuidv4(),
-          name,
-          code,
-          status: "UPCOMING",
-          createdAt: new Date(),
-          hostId: session?.user?.id, // In a real app, this would be the current user's ID
-          host: session?.user
-            ? {
-                ...session.user,
-                name: session.user.name ?? "",
-                email: session.user.email ?? "",
-              }
-            : undefined, // Replace with actual host object if available
-          players: [],
-          captains: [],
-        }
-        set((state) => ({
-          tournaments: [...state.tournaments, newTournament],
-          currentTournamentCode: code,
-        }))
-        return code
-      },
       joinTournament: (code) => {
         const tournament = get().tournaments.find((t) => t.code === code)
         if (tournament) {
@@ -128,7 +100,7 @@ export const useAppStore = create<AppState>()(
         }),
     }),
     {
-      name: "valorant-auction-storage",
+      name: "Esports-auction-storage",
     },
   ),
 )

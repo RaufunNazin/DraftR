@@ -3,7 +3,6 @@
 import { io, type Socket } from "socket.io-client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { useToast } from "@/hooks/use-toast";
 import type { Player, Captain, BidMode } from "@/lib/types";
 
 // Define socket event types
@@ -655,7 +654,7 @@ export const useSocketStore = create<SocketStore>()(
       },
     }),
     {
-      name: "valorant-auction-socket",
+      name: "Esports-auction-socket",
       // Only persist the tournament code
       partialize: (state) => ({ tournamentCode: state.tournamentCode }),
     }

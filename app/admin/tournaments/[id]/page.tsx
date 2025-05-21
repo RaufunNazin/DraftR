@@ -11,12 +11,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, Users, Trophy, Copy, Check } from "lucide-react";
 import { getTournamentById } from "@/lib/actions/tournament";
 import { PlayerRegistration } from "@/components/tournament/player-registration";
 import { CaptainManagement } from "@/components/tournament/captain-management";
 import type { Tournament } from "@/lib/types";
+import { toast } from 'react-toastify'
 
 export default function TournamentDetailPage({
   params,
@@ -24,7 +24,6 @@ export default function TournamentDetailPage({
   params: { id: string };
 }) {
   const router = useRouter();
-  const { toast } = useToast();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -61,18 +60,10 @@ export default function TournamentDetailPage({
         };
         setTournament(mappedTournament);
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to load tournament",
-          variant: "destructive",
-        });
+        toast.error(result.error || "Failed to load tournament");
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load tournament",
-        variant: "destructive",
-      });
+      toast.error("Failed to load tournament");
     } finally {
       setIsLoading(false);
     }
@@ -83,10 +74,7 @@ export default function TournamentDetailPage({
       navigator.clipboard.writeText(tournament.code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast({
-        title: "Code Copied",
-        description: "Tournament code copied to clipboard",
-      });
+      toast.info("Tournament code copied to clipboard");
     }
   };
 

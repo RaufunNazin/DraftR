@@ -8,15 +8,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/hooks/use-toast"
 import { Calendar, Loader2, Plus, Trash2 } from "lucide-react"
 import { createTournament, getTournaments, deleteTournament } from "@/lib/actions/tournament"
 import type { Tournament } from "@/lib/types"
+import { toast } from 'react-toastify'
 
 export default function AdminPage() {
   const router = useRouter()
   const { data: session, status } = useSession()
-  const { toast } = useToast()
   const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [tournamentName, setTournamentName] = useState("")
@@ -27,11 +26,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (status === "authenticated") {
       if (session?.user?.role !== "ADMIN") {
-        toast({
-          title: "Access Denied",
-          description: "You must be an admin to access this page.",
-          variant: "destructive",
-        })
+        toast.error("You must be an admin to access this page.")
         router.push("/dashboard")
       } else {
         loadTournaments()
@@ -46,20 +41,21 @@ export default function AdminPage() {
     try {
       const result = await getTournaments()
       if (result.success) {
-        setTournaments(result.tournaments)
+        setTournaments(
+          (result.tournaments ?? []).map((tournament: any) => ({
+            ...tournament,
+            host: {
+              ...tournament.host,
+              email: tournament.host.email ?? "",
+              role: tournament.host.role ?? "USER",
+            },
+          }))
+        )
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to load tournaments",
-          variant: "destructive",
-        })
+        toast.error(result.error || "Failed to load tournaments")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load tournaments",
-        variant: "destructive",
-      })
+      toast.error("Failed to load tournaments")
     } finally {
       setIsLoading(false)
     }
@@ -67,11 +63,7 @@ export default function AdminPage() {
 
   const handleCreateTournament = async () => {
     if (!tournamentName) {
-      toast({
-        title: "Missing tournament name",
-        description: "Please enter a name for your tournament.",
-        variant: "destructive",
-      })
+      toast.error("Please enter a name for your tournament.")
       return
     }
 
@@ -81,26 +73,15 @@ export default function AdminPage() {
       const result = await createTournament(tournamentName)
 
       if (result.success) {
-        toast({
-          title: "Tournament created",
-          description: `Tournament "${tournamentName}" created with code ${result.code}.`,
-        })
+        toast.success(`Tournament "${tournamentName}" created with code ${result.code}.`)
 
         setTournamentName("")
         await loadTournaments()
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to create tournament",
-          variant: "destructive",
-        })
+        toast.error(result.error || "Failed to create tournament")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create tournament",
-        variant: "destructive",
-      })
+      toast.error("Failed to create tournament")
     } finally {
       setIsSubmitting(false)
     }
@@ -111,24 +92,13 @@ export default function AdminPage() {
     try {
       const result = await deleteTournament(id)
       if (result.success) {
-        toast({
-          title: "Tournament deleted",
-          description: "The tournament has been deleted successfully.",
-        })
+        toast.success("The tournament has been deleted successfully.")
         await loadTournaments()
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to delete tournament",
-          variant: "destructive",
-        })
+        toast.error(result.error || "Failed to delete tournament")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete tournament",
-        variant: "destructive",
-      })
+      toast.error("Failed to delete tournament")
     } finally {
       setIsDeletingId(null)
     }
@@ -178,7 +148,7 @@ export default function AdminPage() {
             <Card className="border-purple-500/20 shadow-lg">
               <CardHeader>
                 <CardTitle>Create New Tournament</CardTitle>
-                <CardDescription>Set up a new Valorant auction tournament</CardDescription>
+                <CardDescription>Set up a new Esports auction tournament</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
