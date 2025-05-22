@@ -4,32 +4,9 @@ import { io, type Socket } from "socket.io-client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Player, Captain, BidMode } from "@/lib/types";
+import type { AuctionState } from "@/lib/types"
+import type { AuctionHistoryItem } from "@/lib/types";
 
-// Define socket event types
-export interface AuctionState {
-  isActive: boolean;
-  isPaused: boolean;
-  bidMode: BidMode;
-  timer: number;
-  currentPlayer: Player | null;
-  currentBid: number;
-  currentBidder: Captain | null;
-  skipVotes: string[];
-  captains: Captain[];
-  players: Player[];
-  history: AuctionHistoryItem[];
-}
-
-export interface AuctionHistoryItem {
-  playerId: string;
-  playerName: string;
-  captainId: string;
-  captainName: string;
-  finalBid: number;
-  timestamp: Date;
-}
-
-// Socket store
 interface SocketStore {
   socket: Socket | null;
   isConnected: boolean;
@@ -171,6 +148,10 @@ export const useSocketStore = create<SocketStore>()(
         let timerUpdateTimeout: NodeJS.Timeout | null = null;
 
         socket.on("auction:state", (data: AuctionState) => {
+          // Convert roundInitialCredits back to a Map if it exists
+          if (data.roundInitialCredits) {
+            data.roundInitialCredits = new Map(Object.entries(data.roundInitialCredits));
+          }
           set({
             auctionState: data,
             localAuctionState: data, // Reset local state when we get a full state update

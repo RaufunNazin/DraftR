@@ -90,12 +90,17 @@ export function AuctionRoom({
     (c) => c.id === selectedCaptainId
   );
 
+  const captainRoundInitialCredits = auctionState?.roundInitialCredits?.get(
+    selectedCaptainId || ""
+  );
+
   const canBid =
     selectedCaptain &&
     auctionState?.currentPlayer &&
+    captainRoundInitialCredits !== undefined && // Ensure captainRoundInitialCredits is defined
     canCaptainBid(
       selectedCaptain.tier,
-      selectedCaptain.credits,
+      captainRoundInitialCredits,
       auctionState.currentPlayer.tier,
       auctionState.currentBid,
       selectedCaptain.pickedTiers.map((pt) => pt.tier)
@@ -324,8 +329,7 @@ export function AuctionRoom({
                         </div>
                         <div className="text-xs text-muted-foreground">
                           Tier {selectedCaptain.tier} Captain •{" "}
-                          {formatCredits(selectedCaptain.credits)} credits
-                          left
+                          {formatCredits(selectedCaptain.credits)} credits left
                         </div>
                       </div>
                     </div>
@@ -368,7 +372,9 @@ export function AuctionRoom({
                                   pt.tier === auctionState.currentPlayer!.tier
                               )
                             ? "You already have a player from this tier"
-                            : selectedCaptain.credits < auctionState.currentBid
+                            : captainRoundInitialCredits !== undefined &&
+                              captainRoundInitialCredits <
+                                auctionState.currentBid // Use captainRoundInitialCredits
                             ? "Not enough credits"
                             : "Cannot bid"}
                         </div>

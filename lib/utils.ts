@@ -43,7 +43,7 @@ export function formatTimer(seconds: number): string {
 
 export function canCaptainBid(
   captainTier: Tier,
-  captainCredits: number,
+  captainRoundInitialCredits: number,
   playerTier: Tier,
   currentBid: number,
   pickedTiers: Tier[],
@@ -58,9 +58,13 @@ export function canCaptainBid(
     return false
   }
 
-  // Captain must have enough credits
-  if (captainCredits < currentBid) {
-    return false
+  // Captain must have enough credits for the next possible bid.
+  // Assumes the smallest increment is 1. So, credits must be > currentBid.
+  // Or, cannot bid if credits <= currentBid (if currentBid > 0)
+  // or if credits < 1 (if currentBid is 0).
+  // This simplifies to: captain needs more credits than the current highest bid.
+  if (captainRoundInitialCredits <= currentBid) {
+    return false;
   }
 
   return true

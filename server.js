@@ -353,52 +353,67 @@ function startServer() {
 
           // const oldBidderCaptainObject = auctionState.currentBidder; // This is the full captain object or null
 
-          const updatedCaptains = auctionState.captains.map((c) => {
-            const initialCreditsForThisCaptainInRound = roundInitialCredits.get(
-              c.id
-            );
-            if (initialCreditsForThisCaptainInRound === undefined) {
-              console.warn(
-                `Warning: Initial credits missing for captain ${c.id} during bid processing. Using current actual credits as fallback for display.`
-              );
-              // This captain's credits in the display will be their actual current credits.
-              return { ...c };
-            }
+          // Create a new captains array for the new state.
+          // The `credits` property on each captain in this array should reflect their *actual* current credits
+          // after considering the new bid.
+          const updatedCaptainsActualCredits = auctionState.captains.map(
+            (c_iter) => {
+              let newCredits = c_iter.credits; // Start with current credits
 
-            let newDisplayCredits = initialCreditsForThisCaptainInRound;
-            if (c.id === captainId) {
-              // This is the new current bidder
-              newDisplayCredits = initialCreditsForThisCaptainInRound - amount;
+              // Was c_iter the previous high bidder? If so, refund their bid.
+              // This handles both a different captain being outbid,
+              // and the current bidder outbidding themselves (their previous bid is refunded first).
+              if (auctionState.currentBidder && c_iter.id === auctionState.currentBidder.id) {
+                newCredits += auctionState.currentBid;
+              }
+
+              // Is c_iter the new high bidder? If so, deduct their new bid amount.
+              if (c_iter.id === captainId) {
+                newCredits -= amount;
+              }
+
+              return { ...c_iter, credits: newCredits };
             }
-            // For other captains, their displayed credits during this player's bidding round
-            // are their initial credits for this round.
-            // This means if they were a previous bidder, their displayed credits "reset" to initial for the round.
-            return { ...c, credits: newDisplayCredits }; // This 'credits' is for display during this round
-          });
+          );
 
           const updatedAuctionState = {
             ...auctionState,
             currentBid: amount,
             currentBidder: captainBidding, // Store the full captain object as currentBidder
-            captains: updatedCaptains, // Captains array now reflects display credits for the round
+            captains: updatedCaptainsActualCredits, // Captains array now reflects actual current credits
             timer: auctionState.timerSeconds || 30,
+            // roundInitialCredits remains unchanged and is correctly a Map
           };
 
           tournamentCache.set(tournamentCode, updatedAuctionState);
 
           if (!dev) {
-            // For Redis, we might want to store the "actual" credits vs "display/round" credits separately
-            // or ensure client understands the context of 'credits' in auctionState.
-            // For now, this simplified state is pushed.
+            // For Redis, we need to serialize the Map for roundInitialCredits
+            const serializableStateForRedis = {
+              ...updatedAuctionState,
+              roundInitialCredits: updatedAuctionState.roundInitialCredits
+                ? Object.fromEntries(updatedAuctionState.roundInitialCredits)
+                : undefined,
+            };
             redisClient.publish(
               "tournament-cache-update",
-              JSON.stringify({ tournamentCode, data: updatedAuctionState })
+              JSON.stringify({
+                tournamentCode,
+                data: serializableStateForRedis,
+              })
             );
           }
 
+          // For broadcasting to clients, also serialize roundInitialCredits
+          const serializableStateForClient = {
+            ...updatedAuctionState,
+            roundInitialCredits: updatedAuctionState.roundInitialCredits
+              ? Object.fromEntries(updatedAuctionState.roundInitialCredits)
+              : undefined,
+          };
           io.to(`tournament:${tournamentCode}`).emit(
             "auction:state",
-            updatedAuctionState
+            serializableStateForClient
           );
 
           // Persist the bid to the database
@@ -884,13 +899,12 @@ async function selectNextPlayer(auctionId, tournamentCode, io) {
     const roundInitialCredits = new Map();
     if (auctionState.captains && Array.isArray(auctionState.captains)) {
       auctionState.captains.forEach((captain) => {
-        // Ensure captain.credits is a number, default to 0 if not
         const credits =
           typeof captain.credits === "number" ? captain.credits : 0;
         roundInitialCredits.set(captain.id, credits);
       });
     }
-    auctionState.roundInitialCredits = roundInitialCredits; // Persist this in the auctionState
+    auctionState.roundInitialCredits = roundInitialCredits; // This is a Map
 
     // Use cached data
     const availablePlayers = auctionState.players || [];
@@ -902,35 +916,25 @@ async function selectNextPlayer(auctionId, tournamentCode, io) {
       auctionState.currentPlayer = null;
       auctionState.currentBid = 0;
       auctionState.currentBidder = null;
-      // Consider clearing roundInitialCredits or let it be overwritten
+      // auctionState.roundInitialCredits is still a Map here
       tournamentCache.set(tournamentCode, auctionState);
-      io.to(`tournament:${tournamentCode}`).emit("auction:state", auctionState);
-      // Clear the auction timer if any
+
+      const serializableStateEnd = {
+        ...auctionState,
+        roundInitialCredits: auctionState.roundInitialCredits
+          ? Object.fromEntries(auctionState.roundInitialCredits) // Convert Map to object
+          : undefined,
+      };
+      io.to(`tournament:${tournamentCode}`).emit(
+        "auction:state",
+        serializableStateEnd
+      );
+
       if (activeTimers.has(auctionId)) {
         clearInterval(activeTimers.get(auctionId));
         activeTimers.delete(auctionId);
       }
-      await prisma.auction.update({
-        where: { id: auctionId },
-        data: {
-          isActive: false,
-          endedAt: new Date(),
-          currentPlayerId: null,
-        },
-      });
-
-      await prisma.tournament.update({
-        where: { id: auction.tournament.id },
-        data: {
-          status: "COMPLETED",
-          endedAt: new Date(),
-        },
-      });
-
-      io.to(`tournament:${tournamentCode}`).emit("auction:complete", {
-        isActive: false,
-      });
-      return;
+      return; // Exit selectNextPlayer
     }
 
     // Select a random player
@@ -944,17 +948,16 @@ async function selectNextPlayer(auctionId, tournamentCode, io) {
 
     // Update local state first
     auctionState.currentPlayer = nextPlayer;
-    auctionState.currentBid = nextPlayer.startingPrice || 0; // Initialize with player's starting price
+    auctionState.currentBid = nextPlayer.startingPrice || 0;
     auctionState.currentBidder = null;
-    auctionState.skipVotes = []; // Reset skip votes
-    auctionState.timer = auctionState.timerSeconds || 30; // Reset timer from config or default
-    auctionState.isPaused = false; // Ensure auction is not paused
-
+    auctionState.skipVotes = [];
+    auctionState.timer = auctionState.timerSeconds || 30;
+    auctionState.isPaused = false;
     // Remove the selected player from the available list
     auctionState.players = availablePlayers.filter(
       (p) => p.id !== nextPlayer.id
     );
-
+    // auctionState.roundInitialCredits is still a Map here
     tournamentCache.set(tournamentCode, auctionState);
 
     // Persist current player to DB
@@ -969,7 +972,16 @@ async function selectNextPlayer(auctionId, tournamentCode, io) {
     // If bids are a separate table, ensure old bids are cleared or marked as inactive if needed.
 
     // Broadcast the new player and reset auction parameters via full state update
-    io.to(`tournament:${tournamentCode}`).emit("auction:state", auctionState);
+    const serializableStateNextPlayer = {
+      ...auctionState,
+      roundInitialCredits: auctionState.roundInitialCredits
+        ? Object.fromEntries(auctionState.roundInitialCredits) // Convert Map to object
+        : undefined,
+    };
+    io.to(`tournament:${tournamentCode}`).emit(
+      "auction:state",
+      serializableStateNextPlayer
+    );
 
     // Restart the auction timer for the new player
     await startAuctionTimer(auctionId, tournamentCode, io, auctionState.timer);

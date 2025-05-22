@@ -122,6 +122,7 @@ export interface AuctionState {
   captains: Captain[]
   players: Player[]
   history: AuctionHistoryItem[]
+  roundInitialCredits?: Map<string, number> // Add this line
 }
 
 export interface AuctionHistoryItem {
