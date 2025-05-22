@@ -347,6 +347,8 @@ function startServer() {
             captainName: captain.user.name,
             captainTier: captain.tier,
             captainCredits: updatedCaptains.find(c => c.id === captainId).credits, // Get updated credits after calculations
+            previousBidderId: previousBidder ? previousBidder.id : null,
+            previousBidAmount: previousBidder ? auctionState.currentBid : 0,
           });
 
           // Reset timer in broadcast
@@ -1137,73 +1139,92 @@ async function startAuctionTimer(auctionId, tournamentCode, io, initialTimer = n
         // Broadcast timer update
         io.to(`tournament:${tournamentCode}`).emit("auction:timer", { timer: newTimer })
 
-        // Check if timer expired
+        // Check if timer expired          
         if (newTimer <= 0) {
-          clearInterval(activeTimers.get(auctionId))
-          activeTimers.delete(auctionId)
+            clearInterval(activeTimers.get(auctionId))
+            activeTimers.delete(auctionId)
 
-          // If there's a bid, complete the auction for this player
-          if (auction.bids.length > 0) {
-            const highestBid = auction.bids[0]
+            // If there's a bid, complete the auction for this player
+            if (auction.bids.length > 0) {
+              const highestBid = auction.bids[0]
 
-            // Get captain
-            const captain = await prisma.captain.findUnique({
-              where: { id: highestBid.captainId },
-            })
+              // Get captain
+              const captain = await prisma.captain.findUnique({
+                where: { id: highestBid.captainId },
+              })
 
-            if (captain) {
-              // Update captain's credits
-              await prisma.captain.update({
-                where: { id: captain.id },
-                data: {
-                  credits: captain.credits - highestBid.amount,
-                  pickedTiers: {
-                    create: {
-                      tier: auction.currentPlayer.tier,
+              if (captain) {
+                // Update captain's credits
+                await prisma.captain.update({
+                  where: { id: captain.id },
+                  data: {
+                    credits: captain.credits - highestBid.amount,
+                    pickedTiers: {
+                      create: {
+                        tier: auction.currentPlayer.tier,
+                      },
                     },
                   },
-                },
-              })
+                })
 
-              // Assign player to captain
-              await prisma.player.update({
-                where: { id: auction.currentPlayer.id },
-                data: {
-                  captainId: captain.id,
-                },
-              })
+                // Assign player to captain
+                await prisma.player.update({
+                  where: { id: auction.currentPlayer.id },
+                  data: {
+                    captainId: captain.id,
+                  },
+                })
 
-              // Create auction history entry
-              await prisma.auctionHistory.create({
-                data: {
-                  auctionId,
+                // Create auction history entry
+                await prisma.auctionHistory.create({
+                  data: {
+                    auctionId,
+                    playerId: auction.currentPlayer.id,
+                    captainId: captain.id,
+                    finalBid: highestBid.amount,
+                  },
+                })
+
+                // Get updated captain with user info
+                const updatedCaptain = await prisma.captain.findUnique({
+                  where: { id: captain.id },
+                  include: {
+                    user: {
+                      select: {
+                        name: true,
+                      },
+                    },
+                  },
+                })
+
+                // Broadcast auction completion with history entry
+                io.to(`tournament:${tournamentCode}`).emit("auction:complete", {
                   playerId: auction.currentPlayer.id,
+                  playerName: auction.currentPlayer.name,
                   captainId: captain.id,
+                  captainName: updatedCaptain.user.name,
                   finalBid: highestBid.amount,
-                },
-              })
-
-              // Get updated captain with user info
-              const updatedCaptain = await prisma.captain.findUnique({
-                where: { id: captain.id },
-                include: {
-                  user: {
-                    select: {
-                      name: true,
-                    },
+                  timestamp: new Date(),
+                })
+                
+                // Get all captains with updated credit values
+                const allCaptains = await prisma.captain.findMany({
+                  where: { 
+                    tournamentId: auction.tournamentId 
                   },
-                },
-              })
-
-              // Broadcast auction completion
-              io.to(`tournament:${tournamentCode}`).emit("auction:complete", {
-                playerId: auction.currentPlayer.id,
-                playerName: auction.currentPlayer.name,
-                captainId: captain.id,
-                captainName: updatedCaptain.user.name,
-                finalBid: highestBid.amount,
-                timestamp: new Date(),
-              })
+                  include: {
+                    user: { select: { name: true } },
+                    pickedTiers: true,
+                    players: { include: { agents: true } },
+                    agents: true,
+                  },
+                })
+                
+                // Broadcast updated captain data to all clients
+                io.to(`tournament:${tournamentCode}`).emit("auction:complete", { 
+                  captains: allCaptains 
+                })
+              }
             }
           }
 
@@ -1288,7 +1309,7 @@ async function startAuctionTimer(auctionId, tournamentCode, io, initialTimer = n
       if (currentTimer <= 0) {
         clearInterval(activeTimers.get(auctionId))
         activeTimers.delete(auctionId)
-
+        
         // If there's a bid, complete the auction for this player
         if (auctionState.currentBidder) {
           const highestBid = {
@@ -1312,6 +1333,8 @@ async function startAuctionTimer(auctionId, tournamentCode, io, initialTimer = n
               }
               return c
             })
+
+            console.log(`Auction complete - updating captains data. Winner: ${captain.id}, Bid: ${highestBid.amount}`);
 
             const updatedPlayers = auctionState.players.filter((p) => p.id !== auctionState.currentPlayer.id)
 
@@ -1344,8 +1367,26 @@ async function startAuctionTimer(auctionId, tournamentCode, io, initialTimer = n
               )
             }
 
-            // Broadcast auction completion immediately
+            // First broadcast auction completion with history entry
             io.to(`tournament:${tournamentCode}`).emit("auction:complete", historyEntry)
+            
+            // Get fresh captain data from database to ensure all credit values are up-to-date
+            const refreshedCaptains = await prisma.captain.findMany({
+              where: { 
+                tournamentId: auctionState.tournamentId 
+              },
+              include: {
+                user: { select: { name: true } },
+                pickedTiers: true,
+                players: { include: { agents: true } },
+                agents: true,
+              },
+            });
+            
+            // Then broadcast updated captain data with fresh credits to all clients
+            io.to(`tournament:${tournamentCode}`).emit("auction:complete", { 
+              captains: refreshedCaptains 
+            })
 
             // Then persist to database immediately
             await Promise.all([

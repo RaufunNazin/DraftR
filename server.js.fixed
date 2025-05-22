@@ -88,12 +88,7 @@ function startServer() {
     if (!dev) {
       // Subscribe to tournament cache updates
       redisSub.subscribe("tournament-cache-update")
-      redisSub.on("message", (channel, message) => {
-        if (channel === "tournament-cache-update") {
-          const { tournamentCode, data } = JSON.parse(message)
-          tournamentCache.set(tournamentCode, data)
-        }
-      })
+      redisSub.on("message", (channel, message) => {})
     }
 
     // Socket.IO connection handler
@@ -103,31 +98,22 @@ function startServer() {
       // Join a tournament room
       socket.on("join-tournament", async (tournamentCode) => {
         try {
-          // Check cache first
-          let tournament = cache.get(`tournament:${tournamentCode}`)
+          // Join the tournament room
+          socket.join(`tournament:${tournamentCode}`)
+          console.log(`Client ${socket.id} joined tournament:${tournamentCode}`)
 
-          if (!tournament) {
-            tournament = await prisma.tournament.findUnique({
-              where: { code: tournamentCode },
-            })
-
-            if (tournament) {
-              // Cache tournament for 5 minutes
-              cache.set(`tournament:${tournamentCode}`, tournament)
-            }
-          }
+          // Get tournament details from database
+          const tournament = await prisma.tournament.findUnique({
+            where: { code: tournamentCode },
+          })
 
           if (!tournament) {
             socket.emit("error", { message: "Tournament not found" })
             return
           }
 
-          socket.join(`tournament:${tournamentCode}`)
-          console.log(`Socket ${socket.id} joined tournament ${tournamentCode}`)
-
-          // Check if we already have the auction state cached
+          // Get cached auction state or initialize
           let auctionState = tournamentCache.get(tournamentCode)
-
           if (!auctionState) {
             // Auto-initialize auction if it doesn't exist
             let auction = await prisma.auction.findUnique({
@@ -166,10 +152,11 @@ function startServer() {
                     },
                   },
                 },
-                skipVotes: { include: { captain: true } },
+                skipVotes: true,
               },
             })
 
+            // Get all captains
             const captains = await prisma.captain.findMany({
               where: { tournamentId: tournament.id },
               include: {
@@ -180,6 +167,7 @@ function startServer() {
               },
             })
 
+            // Get all available players (not assigned to any captain)
             const players = await prisma.player.findMany({
               where: {
                 tournamentId: tournament.id,
@@ -188,15 +176,21 @@ function startServer() {
               include: { agents: true },
             })
 
+            // Get auction history
             const history = await prisma.auctionHistory.findMany({
               where: { auctionId: auction.id },
-              include: {
-                player: { select: { name: true } },
-                captain: { select: { user: { select: { name: true } } } },
-              },
               orderBy: { timestamp: "desc" },
+              include: {
+                player: true,
+                captain: {
+                  include: {
+                    user: { select: { name: true } },
+                  },
+                },
+              },
             })
 
+            // Initialize auction state
             auctionState = {
               isActive: fullAuction.isActive,
               isPaused: fullAuction.isPaused,
@@ -347,6 +341,8 @@ function startServer() {
             captainName: captain.user.name,
             captainTier: captain.tier,
             captainCredits: updatedCaptains.find(c => c.id === captainId).credits, // Get updated credits after calculations
+            previousBidderId: previousBidder ? previousBidder.id : null,
+            previousBidAmount: previousBidder ? auctionState.currentBid : 0,
           });
 
           // Reset timer in broadcast
@@ -408,15 +404,15 @@ function startServer() {
           }
 
           // Check if captain already voted
-          if (auctionState.skipVotes.includes(captainId)) {
-            socket.emit("error", { message: "Already voted to skip" })
+          const existingVote = auctionState.skipVotes.includes(captainId)
+          if (existingVote) {
             return
           }
 
-          // Update local state first
+          // Update skip votes in cached state
           const updatedSkipVotes = [...auctionState.skipVotes, captainId]
 
-          // Update cached auction state
+          // Update auction state in cache
           const updatedAuctionState = {
             ...auctionState,
             skipVotes: updatedSkipVotes,
@@ -432,13 +428,12 @@ function startServer() {
             )
           }
 
-          // Broadcast skip votes to all clients in the tournament room immediately
-          io.to(`tournament:${tournamentCode}`).emit("auction:skip", {
-            skipVotes: updatedSkipVotes,
-          })
+          // Broadcast updated skip votes immediately
+          io.to(`tournament:${tournamentCode}`).emit("auction:skip", { skipVotes: updatedSkipVotes })
 
-          // Then persist to database asynchronously
+          // Then persist to database
           const dbOperation = async () => {
+            // Create skip vote
             await prisma.auctionSkipVote.create({
               data: {
                 auctionId: auctionState.auctionId,
@@ -616,37 +611,11 @@ function startServer() {
               include: { agents: true },
             })
             
-            console.log(`Found ${players.length} available players for tournament ${tournament.id}`)
+            auctionState.captains = captains
             
             if (players.length === 0) {
-              socket.emit("error", { message: "Cannot start auction - no available players found" })
-              return
-            }
-
-            auctionState.captains = captains
-            auctionState.players = players
-
-            // Cache the auction state
-            tournamentCache.set(tournamentCode, auctionState)
-
-            // Sync with Redis in production
-            if (!dev) {
-              redisClient.publish("tournament-cache-update", JSON.stringify({ tournamentCode, data: auctionState }))
-            }
-          } else {
-            // Update existing auction state
-            auctionState = {
-              ...auctionState,
-              isActive: true,
-              isPaused: false,
-            }
-            
-            // Make sure we have available players
-            if (!auctionState.players || auctionState.players.length === 0) {
-              console.log("No players in cached state, fetching from database")
-              
-              // Fetch available players
-              const players = await prisma.player.findMany({
+              // Check if we need to query for players individually
+              const playersQuery = await prisma.player.findMany({
                 where: {
                   tournamentId: auctionState.tournamentId,
                   captainId: null,
@@ -654,14 +623,55 @@ function startServer() {
                 include: { agents: true },
               })
               
-              console.log(`Found ${players.length} available players for tournament ${auctionState.tournamentId}`)
+              console.log(`Found ${playersQuery.length} available players for tournament ${auctionState.tournamentId}`)
               
-              if (players.length === 0) {
+              if (playersQuery.length === 0) {
                 socket.emit("error", { message: "Cannot start auction - no available players found" })
                 return
               }
               
+              auctionState.players = playersQuery
+            } else {
               auctionState.players = players
+            }
+
+            tournamentCache.set(tournamentCode, auctionState)
+
+            // Sync with Redis in production
+            if (!dev) {
+              redisClient.publish("tournament-cache-update", JSON.stringify({ tournamentCode, data: auctionState }))
+            }
+
+            // Persist to database
+            await prisma.auction.update({
+              where: { id: auctionState.auctionId },
+              data: {
+                isActive: true,
+                startedAt: new Date(),
+                isPaused: false,
+              },
+            })
+          } else {
+            // Update existing cached state
+            auctionState.isActive = true
+            auctionState.isPaused = false
+            
+            // If players is empty, fetch them
+            if (!auctionState.players || auctionState.players.length === 0) {
+              auctionState.players = await prisma.player.findMany({
+                where: {
+                  tournamentId: auctionState.tournamentId,
+                  captainId: null,
+                },
+                include: { agents: true },
+              })
+              
+              console.log(`Found ${auctionState.players.length} available players for tournament ${auctionState.tournamentId}`)
+              
+              if (auctionState.players.length === 0) {
+                socket.emit("error", { message: "Cannot start auction - no available players found" })
+                return
+              }
             }
 
             tournamentCache.set(tournamentCode, auctionState)
@@ -765,14 +775,14 @@ function startServer() {
           // Execute the operation immediately
           await dbOperation()
         } catch (error) {
-          console.error("Error pausing/resuming auction:", error)
-          socket.emit("error", { message: "Failed to pause/resume auction" })
+          console.error("Error changing pause state:", error)
+          socket.emit("error", { message: "Failed to change pause state" })
         }
       })
 
       // Handle disconnect
       socket.on("disconnect", () => {
-        console.log(`Client disconnected: ${socket.id} from worker ${process.pid}`)
+        console.log(`Client disconnected: ${socket.id}`)
       })
     })
 
@@ -801,7 +811,8 @@ async function selectNextPlayer(auctionId, tournamentCode, io) {
         },
       })
 
-      if (!auction) return
+      if (!auction)
+        return;
 
       // Get available players (not assigned to any captain)
       const availablePlayers = await prisma.player.findMany({
@@ -811,28 +822,8 @@ async function selectNextPlayer(auctionId, tournamentCode, io) {
         },
       })
 
-      if (availablePlayers.length === 0) {
-        // No more players, end the auction
-        await prisma.auction.update({
-          where: { id: auctionId },
-          data: {
-            isActive: false,
-            endedAt: new Date(),
-            currentPlayerId: null,
-          },
-        })
-
-        await prisma.tournament.update({
-          where: { id: auction.tournament.id },
-          data: {
-            status: "COMPLETED",
-            endedAt: new Date(),
-          },
-        })
-
-        io.to(`tournament:${tournamentCode}`).emit("auction:complete", { isActive: false })
-        return
-      }
+      if (availablePlayers.length === 0)
+        return;
 
       // Select a random player
       const randomIndex = Math.floor(Math.random() * availablePlayers.length)
@@ -899,46 +890,8 @@ async function selectNextPlayer(auctionId, tournamentCode, io) {
       
       console.log(`Fetched ${fetchedPlayers.length} players from database`);
       
-      if (fetchedPlayers.length === 0) {
-        // No more players, end the auction
-        console.log("No available players found in database either, ending auction");
-        // Update local state first
-        const updatedAuctionState = {
-          ...auctionState,
-          isActive: false,
-          currentPlayer: null,
-        }
-
-        tournamentCache.set(tournamentCode, updatedAuctionState)
-
-        // Sync with Redis in production
-        if (!dev) {
-          redisClient.publish("tournament-cache-update", JSON.stringify({ tournamentCode, data: updatedAuctionState }))
-        }
-
-        // Broadcast completion immediately
-        io.to(`tournament:${tournamentCode}`).emit("auction:complete", { isActive: false })
-
-        // Then persist to database
-        await prisma.auction.update({
-          where: { id: auctionId },
-          data: {
-            isActive: false,
-            endedAt: new Date(),
-            currentPlayerId: null,
-          },
-        })
-
-        await prisma.tournament.update({
-          where: { id: auctionState.tournamentId },
-          data: {
-            status: "COMPLETED",
-            endedAt: new Date(),
-          },
-        })
-
-        return
-      }
+      if (fetchedPlayers.length === 0)
+        return;
       
       // Update auction state with newly fetched players
       auctionState.players = fetchedPlayers;
@@ -1061,9 +1014,7 @@ async function skipCurrentPlayer(auctionId, tournamentCode, io) {
       tournamentCache.set(tournamentCode, updatedAuctionState)
 
       // Sync with Redis in production
-      if (!dev) {
-        redisClient.publish("tournament-cache-update", JSON.stringify({ tournamentCode, data: updatedAuctionState }))
-      }
+      if (!dev) {}
     }
 
     // Clear skip votes in database immediately
@@ -1137,82 +1088,100 @@ async function startAuctionTimer(auctionId, tournamentCode, io, initialTimer = n
         // Broadcast timer update
         io.to(`tournament:${tournamentCode}`).emit("auction:timer", { timer: newTimer })
 
-        // Check if timer expired
+        // Check if timer expired          
         if (newTimer <= 0) {
-          clearInterval(activeTimers.get(auctionId))
-          activeTimers.delete(auctionId)
+            clearInterval(activeTimers.get(auctionId))
+            activeTimers.delete(auctionId)
 
-          // If there's a bid, complete the auction for this player
-          if (auction.bids.length > 0) {
-            const highestBid = auction.bids[0]
+            // If there's a bid, complete the auction for this player
+            if (auction.bids.length > 0) {
+              const highestBid = auction.bids[0]
 
-            // Get captain
-            const captain = await prisma.captain.findUnique({
-              where: { id: highestBid.captainId },
-            })
+              // Get captain
+              const captain = await prisma.captain.findUnique({
+                where: { id: highestBid.captainId },
+              })
 
-            if (captain) {
-              // Update captain's credits
-              await prisma.captain.update({
-                where: { id: captain.id },
-                data: {
-                  credits: captain.credits - highestBid.amount,
-                  pickedTiers: {
-                    create: {
-                      tier: auction.currentPlayer.tier,
+              if (captain) {
+                // Update captain's credits
+                await prisma.captain.update({
+                  where: { id: captain.id },
+                  data: {
+                    credits: captain.credits - highestBid.amount,
+                    pickedTiers: {
+                      create: {
+                        tier: auction.currentPlayer.tier,
+                      },
                     },
                   },
-                },
-              })
+                })
 
-              // Assign player to captain
-              await prisma.player.update({
-                where: { id: auction.currentPlayer.id },
-                data: {
-                  captainId: captain.id,
-                },
-              })
+                // Assign player to captain
+                await prisma.player.update({
+                  where: { id: auction.currentPlayer.id },
+                  data: {
+                    captainId: captain.id,
+                  },
+                })
 
-              // Create auction history entry
-              await prisma.auctionHistory.create({
-                data: {
-                  auctionId,
+                // Create auction history entry
+                await prisma.auctionHistory.create({
+                  data: {
+                    auctionId,
+                    playerId: auction.currentPlayer.id,
+                    captainId: captain.id,
+                    finalBid: highestBid.amount,
+                  },
+                })
+
+                // Get updated captain with user info
+                const updatedCaptain = await prisma.captain.findUnique({
+                  where: { id: captain.id },
+                  include: {
+                    user: {
+                      select: {
+                        name: true,
+                      },
+                    },
+                  },
+                })
+
+                // Broadcast auction completion with history entry
+                io.to(`tournament:${tournamentCode}`).emit("auction:complete", {
                   playerId: auction.currentPlayer.id,
+                  playerName: auction.currentPlayer.name,
                   captainId: captain.id,
+                  captainName: updatedCaptain.user.name,
                   finalBid: highestBid.amount,
-                },
-              })
-
-              // Get updated captain with user info
-              const updatedCaptain = await prisma.captain.findUnique({
-                where: { id: captain.id },
-                include: {
-                  user: {
-                    select: {
-                      name: true,
-                    },
+                  timestamp: new Date(),
+                })
+                
+                // Get all captains with updated credit values
+                const allCaptains = await prisma.captain.findMany({
+                  where: { 
+                    tournamentId: auction.tournamentId 
                   },
-                },
-              })
-
-              // Broadcast auction completion
-              io.to(`tournament:${tournamentCode}`).emit("auction:complete", {
-                playerId: auction.currentPlayer.id,
-                playerName: auction.currentPlayer.name,
-                captainId: captain.id,
-                captainName: updatedCaptain.user.name,
-                finalBid: highestBid.amount,
-                timestamp: new Date(),
-              })
+                  include: {
+                    user: { select: { name: true } },
+                    pickedTiers: true,
+                    players: { include: { agents: true } },
+                    agents: true,
+                  },
+                })
+                
+                // Broadcast updated captain data to all clients
+                io.to(`tournament:${tournamentCode}`).emit("auction:complete", { 
+                  captains: allCaptains 
+                })
+              }
             }
-          }
 
-          // Wait a moment before selecting the next player
-          setTimeout(() => {
-            selectNextPlayer(auctionId, tournamentCode, io)
-            // Restart timer for next player
-            startAuctionTimer(auctionId, tournamentCode, io)
-          }, 1000)
+            // Wait a moment before selecting the next player
+            setTimeout(() => {
+              selectNextPlayer(auctionId, tournamentCode, io)
+              // Restart timer for next player
+              startAuctionTimer(auctionId, tournamentCode, io)
+            }, 1000)
         }
 
         return
@@ -1265,7 +1234,7 @@ async function startAuctionTimer(auctionId, tournamentCode, io, initialTimer = n
       tournamentCache.set(tournamentCode, updatedAuctionState)
 
       // Sync with Redis in production, but less frequently
-      if (!dev && lastDbUpdate > 2000) {
+      if (!dev && now - lastDbUpdate > 2000) {
         redisClient.publish("tournament-cache-update", JSON.stringify({ tournamentCode, data: updatedAuctionState }))
       }
 
@@ -1288,7 +1257,7 @@ async function startAuctionTimer(auctionId, tournamentCode, io, initialTimer = n
       if (currentTimer <= 0) {
         clearInterval(activeTimers.get(auctionId))
         activeTimers.delete(auctionId)
-
+        
         // If there's a bid, complete the auction for this player
         if (auctionState.currentBidder) {
           const highestBid = {
@@ -1312,6 +1281,8 @@ async function startAuctionTimer(auctionId, tournamentCode, io, initialTimer = n
               }
               return c
             })
+
+            console.log(`Auction complete - updating captains data. Winner: ${captain.id}, Bid: ${highestBid.amount}`);
 
             const updatedPlayers = auctionState.players.filter((p) => p.id !== auctionState.currentPlayer.id)
 
@@ -1344,8 +1315,26 @@ async function startAuctionTimer(auctionId, tournamentCode, io, initialTimer = n
               )
             }
 
-            // Broadcast auction completion immediately
+            // First broadcast auction completion with history entry
             io.to(`tournament:${tournamentCode}`).emit("auction:complete", historyEntry)
+            
+            // Get fresh captain data from database to ensure all credit values are up-to-date
+            const refreshedCaptains = await prisma.captain.findMany({
+              where: { 
+                tournamentId: auctionState.tournamentId 
+              },
+              include: {
+                user: { select: { name: true } },
+                pickedTiers: true,
+                players: { include: { agents: true } },
+                agents: true,
+              },
+            });
+            
+            // Then broadcast updated captain data with fresh credits to all clients
+            io.to(`tournament:${tournamentCode}`).emit("auction:complete", { 
+              captains: refreshedCaptains 
+            })
 
             // Then persist to database immediately
             await Promise.all([
