@@ -262,8 +262,18 @@ function startServer() {
             return
           }
 
-          // Quick validations from cache
-          if (captain.credits < amount) {
+          // Get previous bidder to handle credits correctly
+          const previousBidder = auctionState.currentBidder;
+          
+          // Special case: if same captain is bidding again, check if they have enough credits for the increment
+          if (previousBidder && previousBidder.id === captainId) {
+            const incrementalBid = amount - auctionState.currentBid;
+            if (captain.credits < incrementalBid) {
+              socket.emit("error", { message: "Not enough credits for bid increment" })
+              return
+            }
+          } else if (captain.credits < amount) {
+            // Regular case: new captain needs enough credits for full bid
             socket.emit("error", { message: "Not enough credits" })
             return
           }
@@ -278,17 +288,66 @@ function startServer() {
             return
           }
 
-          // Update local state first - but don't deduct credits yet to avoid race condition
-          // We'll just update the current bid and bidder
-          const updatedCaptains = [...auctionState.captains]
+          // Find the previous bidder to restore their credits in the cache
+          const previousBidder = auctionState.currentBidder;
+          
+          // Special case: if same captain is bidding again, check if they have enough credits for the increment
+          if (previousBidder && previousBidder.id === captainId) {
+            const incrementalBid = amount - auctionState.currentBid;
+            if (captain.credits < incrementalBid) {
+              socket.emit("error", { message: "Not enough credits" });
+              return;
+            }
+          } else if (captain.credits < amount) {
+            // Regular case: new captain needs enough credits for full bid
+            socket.emit("error", { message: "Not enough credits" });
+            return;
+          }
+          
+          // Rest of validations...
+          // [Your existing code for tier validations, etc.]
+
+          // Update captains in the cached state with proper credit calculations
+          const updatedCaptains = auctionState.captains.map((c) => {
+            if (previousBidder) {
+              // Special case: if same captain is bidding again
+              if (previousBidder.id === captainId && c.id === captainId) {
+                // Only deduct the increment
+                const increment = amount - auctionState.currentBid;
+                return {
+                  ...c,
+                  credits: c.credits - increment
+                };
+              }
+              
+              // Previous bidder gets their credits back (if not same as new bidder)
+              if (c.id === previousBidder.id && previousBidder.id !== captainId) {
+                return {
+                  ...c,
+                  credits: c.credits + auctionState.currentBid
+                };
+              }
+            }
+            
+            // New bidder pays the full amount (if not same as previous bidder)
+            if (c.id === captainId && (!previousBidder || previousBidder.id !== captainId)) {
+              return {
+                ...c,
+                credits: c.credits - amount
+              };
+            }
+            
+            return c;
+          });
 
           // Update cached auction state
           const updatedAuctionState = {
             ...auctionState,
             currentBid: amount,
-            currentBidder: captain,
+            currentBidder: updatedCaptains.find(c => c.id === captainId),
+            captains: updatedCaptains,
             timer: auctionState.timerSeconds || 30, // Reset timer
-          }
+          };
 
           tournamentCache.set(tournamentCode, updatedAuctionState)
 
@@ -300,14 +359,14 @@ function startServer() {
             )
           }
 
-          // Broadcast bid to all clients in the tournament room immediately
+          // Broadcast the updated bid to all clients
           io.to(`tournament:${tournamentCode}`).emit("auction:bid", {
             amount,
-            captainId,
+            captainId, 
             captainName: captain.user.name,
             captainTier: captain.tier,
-            captainCredits: captain.credits, // Send current credits, not reduced yet
-          })
+            captainCredits: updatedCaptains.find(c => c.id === captainId).credits, // Get updated credits after calculations
+          });
 
           // Reset timer in broadcast
           io.to(`tournament:${tournamentCode}`).emit("auction:timer", {
@@ -490,7 +549,6 @@ function startServer() {
           let auctionState = tournamentCache.get(tournamentCode)
           if (!auctionState) {
             console.log("No cached auction state found, fetching from database")
-            // Rest of the function remains the same...
             // Fallback to database if not in cache
             const tournament = await prisma.tournament.findUnique({
               where: { code: tournamentCode },
@@ -568,6 +626,7 @@ function startServer() {
               },
             })
 
+            // Get all available players (not assigned to any captain)
             const players = await prisma.player.findMany({
               where: {
                 tournamentId: tournament.id,
@@ -575,6 +634,13 @@ function startServer() {
               },
               include: { agents: true },
             })
+            
+            console.log(`Found ${players.length} available players for tournament ${tournament.id}`)
+            
+            if (players.length === 0) {
+              socket.emit("error", { message: "Cannot start auction - no available players found" })
+              return
+            }
 
             auctionState.captains = captains
             auctionState.players = players
@@ -592,6 +658,29 @@ function startServer() {
               ...auctionState,
               isActive: true,
               isPaused: false,
+            }
+            
+            // Make sure we have available players
+            if (!auctionState.players || auctionState.players.length === 0) {
+              console.log("No players in cached state, fetching from database")
+              
+              // Fetch available players
+              const players = await prisma.player.findMany({
+                where: {
+                  tournamentId: auctionState.tournamentId,
+                  captainId: null,
+                },
+                include: { agents: true },
+              })
+              
+              console.log(`Found ${players.length} available players for tournament ${auctionState.tournamentId}`)
+              
+              if (players.length === 0) {
+                socket.emit("error", { message: "Cannot start auction - no available players found" })
+                return
+              }
+              
+              auctionState.players = players
             }
 
             tournamentCache.set(tournamentCode, auctionState)
@@ -812,52 +901,115 @@ async function selectNextPlayer(auctionId, tournamentCode, io) {
     }
 
     // Use cached data
-    const availablePlayers = auctionState.players
+    const availablePlayers = auctionState.players || []
+    console.log(`Found ${availablePlayers.length} available players`);
 
     if (availablePlayers.length === 0) {
-      // No more players, end the auction
+      console.log("No available players found in cache, fetching from database");
+      
+      // Try to fetch players from database before ending auction
+      const fetchedPlayers = await prisma.player.findMany({
+        where: {
+          tournamentId: auctionState.tournamentId,
+          captainId: null,
+        },
+        include: { agents: true },
+      });
+      
+      console.log(`Fetched ${fetchedPlayers.length} players from database`);
+      
+      if (fetchedPlayers.length === 0) {
+        // No more players, end the auction
+        console.log("No available players found in database either, ending auction");
+        // Update local state first
+        const updatedAuctionState = {
+          ...auctionState,
+          isActive: false,
+          currentPlayer: null,
+        }
 
-      // Update local state first
-      const updatedAuctionState = {
+        tournamentCache.set(tournamentCode, updatedAuctionState)
+
+        // Sync with Redis in production
+        if (!dev) {
+          redisClient.publish("tournament-cache-update", JSON.stringify({ tournamentCode, data: updatedAuctionState }))
+        }
+
+        // Broadcast completion immediately
+        io.to(`tournament:${tournamentCode}`).emit("auction:complete", { isActive: false })
+
+        // Then persist to database
+        await prisma.auction.update({
+          where: { id: auctionId },
+          data: {
+            isActive: false,
+            endedAt: new Date(),
+            currentPlayerId: null,
+          },
+        })
+
+        await prisma.tournament.update({
+          where: { id: auctionState.tournamentId },
+          data: {
+            status: "COMPLETED",
+            endedAt: new Date(),
+          },
+        })
+
+        return
+      }
+      
+      // Update auction state with newly fetched players
+      auctionState.players = fetchedPlayers;
+      tournamentCache.set(tournamentCode, auctionState);
+      
+      // Select from the newly fetched players
+      const randomFetchedIndex = Math.floor(Math.random() * fetchedPlayers.length);
+      const nextFetchedPlayer = fetchedPlayers[randomFetchedIndex];
+      
+      console.log(`Selected player from database: ${nextFetchedPlayer.name} (Tier ${nextFetchedPlayer.tier})`);
+      
+      // Update local state
+      const updatedAuctionStateWithPlayer = {
         ...auctionState,
-        isActive: false,
-        currentPlayer: null,
+        currentPlayer: nextFetchedPlayer,
+        currentBid: nextFetchedPlayer.startingPrice,
+        currentBidder: null,
+        skipVotes: [],
+        timer: auctionState.timerSeconds || 30,
       }
-
-      tournamentCache.set(tournamentCode, updatedAuctionState)
-
-      // Sync with Redis in production
-      if (!dev) {
-        redisClient.publish("tournament-cache-update", JSON.stringify({ tournamentCode, data: updatedAuctionState }))
-      }
-
-      // Broadcast completion immediately
-      io.to(`tournament:${tournamentCode}`).emit("auction:complete", { isActive: false })
-
-      // Then persist to database
+      
+      tournamentCache.set(tournamentCode, updatedAuctionStateWithPlayer);
+      
+      // Broadcast and update database as normal
+      io.to(`tournament:${tournamentCode}`).emit("auction:player", {
+        player: {
+          id: nextFetchedPlayer.id,
+          name: nextFetchedPlayer.name,
+          tier: nextFetchedPlayer.tier,
+          role: nextFetchedPlayer.role,
+          startingPrice: nextFetchedPlayer.startingPrice,
+          agents: nextFetchedPlayer.agents.map((a) => (typeof a === "string" ? a : a.agent)),
+        },
+        currentBid: nextFetchedPlayer.startingPrice,
+        currentBidder: null,
+      });
+      
       await prisma.auction.update({
         where: { id: auctionId },
         data: {
-          isActive: false,
-          endedAt: new Date(),
-          currentPlayerId: null,
+          currentPlayerId: nextFetchedPlayer.id,
+          currentTimer: auctionState.timerSeconds || 30,
         },
-      })
-
-      await prisma.tournament.update({
-        where: { id: auctionState.tournamentId },
-        data: {
-          status: "COMPLETED",
-          endedAt: new Date(),
-        },
-      })
-
-      return
+      });
+      
+      return;
     }
 
     // Select a random player
     const randomIndex = Math.floor(Math.random() * availablePlayers.length)
     const nextPlayer = availablePlayers[randomIndex]
+    console.log(`Selected player: ${nextPlayer.name} (Tier ${nextPlayer.tier})`);
 
     // Update local state first
     const updatedAuctionState = {
@@ -1079,7 +1231,7 @@ async function startAuctionTimer(auctionId, tournamentCode, io, initialTimer = n
             selectNextPlayer(auctionId, tournamentCode, io)
             // Restart timer for next player
             startAuctionTimer(auctionId, tournamentCode, io)
-          }, 3000)
+          }, 1000)
         }
 
         return
@@ -1255,7 +1407,7 @@ async function startAuctionTimer(auctionId, tournamentCode, io, initialTimer = n
           selectNextPlayer(auctionId, tournamentCode, io)
           // Restart timer for next player
           startAuctionTimer(auctionId, tournamentCode, io)
-        }, 3000)
+        }, 1000)
       }
     } catch (error) {
       console.error("Error in auction timer:", error)

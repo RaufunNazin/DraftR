@@ -520,6 +520,14 @@ export const useSocketStore = create<SocketStore>()(
           "Emitting auction:start event with tournamentCode:",
           tournamentCode
         );
+        
+        // Reset local state first to ensure we're not working with stale data
+        set({
+          localAuctionState: null,
+          auctionState: null
+        });
+        
+        // Send the start auction event
         socket.emit("auction:start", { tournamentCode });
       },
 
@@ -560,22 +568,45 @@ export const useSocketStore = create<SocketStore>()(
         if (auctionState) {
           get().addPendingBid(captainId, amount);
 
-          // Find the captain
+          // Find the captain and current bidder
           const captain = auctionState.captains.find((c) => c.id === captainId);
+          const currentBidder = auctionState.currentBidder;
 
           if (captain) {
-            // Optimistically update the UI immediately
+            // Update captains array with proper credit handling
             const updatedCaptains = auctionState.captains.map((c) => {
-              if (c.id === captainId) {
+              if (currentBidder) {
+                // Special case: if same captain is bidding again, don't restore & deduct
+                if (currentBidder.id === captainId && c.id === captainId) {
+                  // Calculate the incremental amount (amount - previous bid)
+                  const increment = amount - auctionState.currentBid;
+                  return {
+                    ...c,
+                    credits: c.credits - increment
+                  };
+                }
+                
+                // Previous bidder gets their credits back
+                if (c.id === currentBidder.id) {
+                  return {
+                    ...c,
+                    credits: c.credits + auctionState.currentBid
+                  };
+                }
+              }
+              
+              // New bidder pays the full amount (if not the same as previous bidder)
+              if (c.id === captainId && (!currentBidder || currentBidder.id !== captainId)) {
                 return {
                   ...c,
-                  // Don't reduce credits yet to avoid "not enough credits" error
-                  // We'll just update the current bid and bidder
+                  credits: c.credits - amount
                 };
               }
+              
               return c;
             });
 
+            // Optimistically update the UI immediately
             get().updateLocalState({
               currentBid: amount,
               currentBidder: captain,

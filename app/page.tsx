@@ -58,7 +58,7 @@ export default function Home() {
           Platform Features
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Card className="border-purple-500/20 shadow-lg hover:shadow-purple-500/5 transition-all duration-200">
+          <Card className="border-purple-500/20 shadow-lg hover:shadow-purple-500/20 transition-all duration-200">
             <CardHeader className="flex flex-row justify-between items-center">
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-purple-500" />
@@ -93,7 +93,7 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          <Card className="border-purple-500/20 shadow-lg hover:shadow-purple-500/5 transition-all duration-200">
+          <Card className="border-purple-500/20 shadow-lg hover:shadow-purple-500/20 transition-all duration-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Gamepad2 className="h-5 w-5 text-purple-500" />
@@ -110,7 +110,7 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          <Card className="border-green-500/20 shadow-lg hover:shadow-green-500/5 transition-all duration-200">
+          <Card className="border-green-500/20 shadow-lg hover:shadow-green-500/20 transition-all duration-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-green-500" />
@@ -126,7 +126,7 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          <Card className="border-yellow-500/20 shadow-lg hover:shadow-yellow-500/5 transition-all duration-200">
+          <Card className="border-yellow-500/20 shadow-lg hover:shadow-yellow-500/20 transition-all duration-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-yellow-500" />
@@ -142,7 +142,7 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          <Card className="border-cyan-500/20 shadow-lg hover:shadow-cyan-500/5 transition-all duration-200">
+          <Card className="border-cyan-500/20 shadow-lg hover:shadow-cyan-500/20 transition-all duration-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <LineChart className="h-5 w-5 text-cyan-500" />
@@ -165,7 +165,7 @@ export default function Home() {
       <section className="container mx-auto py-16 px-4">
         <div className="bg-gradient-to-r from-purple-500/10 to-red-500/10 rounded-lg p-8 flex flex-col items-center">
           <h2 className="text-3xl font-light text-center mb-4 uppercase">
-            Ready to host a <strong>auction</strong>?
+            Ready to host an <strong>auction</strong>?
           </h2>
           <p className="text-center text-muted-foreground max-w-2xl mb-8">
             Join thousands of Esports enthusiasts and run your own custom

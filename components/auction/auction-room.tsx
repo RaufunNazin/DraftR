@@ -34,7 +34,7 @@ interface AuctionRoomProps {
   setSelectedCaptainId: (id: string | null) => void;
   toggleSidebar: () => void;
   status: TournamentStatus;
-  tournamentName: String
+  tournamentName: String;
 }
 
 export function AuctionRoom({
@@ -45,7 +45,7 @@ export function AuctionRoom({
   status,
   tournamentName,
 }: AuctionRoomProps) {
-  const router = useRouter()
+  const router = useRouter();
   const { placeBid, voteToSkip } = useSocketStore();
   const auctionState = useAuctionState();
   const { data: session } = useSession();
@@ -106,7 +106,7 @@ export function AuctionRoom({
 
   // Calculate skip vote threshold
   const skipVotesNeeded = auctionState?.captains.length
-    ? Math.ceil(auctionState.captains.length / 2)
+    ? auctionState.captains.length
     : 0;
 
   if (!auctionState) return null;
@@ -162,7 +162,7 @@ export function AuctionRoom({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Auction Area */}
         <div className="lg:col-span-3">
-          {status === "COMPLETED" ? (
+          {auctionState.isActive == false && status === "COMPLETED" ? (
             <>
               <div className="flex items-center justify-center mb-6 p-4 bg-gradient-to-r from-green-500/10 to-purple-500/10 rounded-lg">
                 <CheckCircle2 className="h-6 w-6 text-green-500 mr-2" />
@@ -192,23 +192,25 @@ export function AuctionRoom({
                           </CardTitle>
                           <div className="text-xs text-muted-foreground">
                             Tier {captain.tier} Captain •{" "}
-                            {formatCredits(captain.credits)} credits remaining
+                            {formatCredits(captain.credits)} credits left
                           </div>
                         </div>
                       </div>
                     </CardHeader>
                     <CardContent className="pt-4 space-y-4">
                       {/* Captain as a player */}
-                      <div className="p-3 rounded-lg border bg-card/50 hover:bg-card/80 transition-colors">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div
-                            className={`${getTierBadgeClass(
-                              captain.tier
-                            )} px-2 text-xs rounded-full`}
-                          >
-                            T{captain.tier}
+                      <div className="p-3 rounded-lg border bg-card/50 hover:bg-card/80 transition-colors flex flex-col gap-3">
+                        <div className="flex items-center gap-2 justify-between">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`${getTierBadgeClass(
+                                captain.tier
+                              )} px-3 py-0.5 text-xs rounded-full`}
+                            >
+                              T{captain.tier}
+                            </div>
+                            <h4 className="font-medium">{captain.user.name}</h4>
                           </div>
-                          <h4 className="font-medium">{captain.user.name}</h4>
                           <Badge
                             className={getRoleBadgeClass(captain.role)}
                             variant="outline"
@@ -217,7 +219,7 @@ export function AuctionRoom({
                           </Badge>
                         </div>
 
-                        <div className="flex flex-wrap gap-1 mt-1">
+                        <div className="flex flex-wrap gap-1">
                           {captain.agents.map((agentObj) => (
                             <Badge
                               key={agentObj.id}
@@ -236,17 +238,19 @@ export function AuctionRoom({
                         .map((player) => (
                           <div
                             key={player.id}
-                            className="p-3 rounded-lg border bg-card/50 hover:bg-card/80 transition-colors"
+                            className="p-3 rounded-lg border bg-card/50 hover:bg-card/80 transition-colors flex flex-col gap-3"
                           >
-                            <div className="flex items-center gap-2 mb-1">
-                              <div
-                                className={`${getTierBadgeClass(
-                                  player.tier
-                                )} px-2 text-xs rounded-full`}
-                              >
-                                T{player.tier}
+                            <div className="flex items-center gap-2 justify-between">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={`${getTierBadgeClass(
+                                    player.tier
+                                  )} px-3 py-0.5 text-xs rounded-full`}
+                                >
+                                  T{player.tier}
+                                </div>
+                                <h4 className="font-medium">{player.name}</h4>
                               </div>
-                              <h4 className="font-medium">{player.name}</h4>
                               <Badge
                                 className={getRoleBadgeClass(player.role)}
                                 variant="outline"
@@ -255,7 +259,7 @@ export function AuctionRoom({
                               </Badge>
                             </div>
 
-                            <div className="flex flex-wrap gap-1 mt-1">
+                            <div className="flex flex-wrap gap-1">
                               {player.agents.map((agentObj) => (
                                 <Badge
                                   key={agentObj.id}
@@ -299,7 +303,7 @@ export function AuctionRoom({
           )}
 
           {/* Captain Bidding Controls - Only visible for captains */}
-          {userRole === "CAPTAIN" && status === "ACTIVE" && (
+          {userRole === "CAPTAIN" && auctionState.isActive == true && (
             <Card className="border-purple-500/20 shadow-lg mt-6">
               <CardContent className="p-6">
                 <h3 className="text-lg font-semibold mb-4">Bidding Controls</h3>
@@ -321,7 +325,7 @@ export function AuctionRoom({
                         <div className="text-xs text-muted-foreground">
                           Tier {selectedCaptain.tier} Captain •{" "}
                           {formatCredits(selectedCaptain.credits)} credits
-                          remaining
+                          left
                         </div>
                       </div>
                     </div>

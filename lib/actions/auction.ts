@@ -25,6 +25,18 @@ export async function startAuction(tournamentId: string) {
     throw new Error("Only the tournament host can start the auction")
   }
 
+  // Check if there are players in the tournament before starting
+  const playerCount = await prisma.player.count({
+    where: {
+      tournamentId,
+      captainId: null, // Only count unassigned players
+    }
+  })
+
+  if (playerCount === 0) {
+    throw new Error("Cannot start auction - no available players found")
+  }
+
   // Check if auction already exists
   const existingAuction = await prisma.auction.findUnique({
     where: { tournamentId },

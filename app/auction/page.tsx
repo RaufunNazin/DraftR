@@ -82,7 +82,7 @@ export default function AuctionPage() {
             if (tournamentResult.success && tournamentResult.tournament) {
               // Set user role based on session
               setTournamentStatus(tournamentResult.tournament.status);
-              setTournamentName(tournamentResult.tournament.name)
+              setTournamentName(tournamentResult.tournament.name);
               if (session?.user?.role === "ADMIN") {
                 setUserRole("ADMIN");
               } else if (
@@ -233,7 +233,7 @@ export default function AuctionPage() {
         )}
       </div>
       {(userRole === "HOST" || userRole === "ADMIN") &&
-        tournamentStatus == "ACTIVE" && (
+        (tournamentStatus == "UPCOMING" || tournamentStatus == "ACTIVE") && (
           <HostControls status={tournamentStatus} />
         )}
     </div>
