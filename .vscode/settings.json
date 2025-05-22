@@ -2,5 +2,8 @@
     "editor.defaultFormatter": "mikoz.composite-formatter",
     "[typescriptreact]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
     }
 }
