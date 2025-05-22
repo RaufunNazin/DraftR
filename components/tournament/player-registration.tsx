@@ -81,8 +81,6 @@ export function PlayerRegistration({ tournamentId }: PlayerRegistrationProps) {
 
         // Reset form
         setName("")
-        setTier(null)
-        setRole(null)
         setSelectedAgents([])
 
         // Reload players

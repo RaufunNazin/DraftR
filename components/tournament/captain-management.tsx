@@ -102,8 +102,6 @@ export function CaptainManagement({ tournamentId }: CaptainManagementProps) {
 
         // Reset form
         setSelectedUserId("");
-        setTier(null);
-        setRole(null);
 
         // Reload data
         await loadData();
