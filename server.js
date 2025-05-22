@@ -873,6 +873,13 @@ async function selectNextPlayer(auctionId, tournamentCode, io) {
       return;
     }
 
+    const auction = await prisma.auction.findUnique({
+      where: { id: auctionId },
+      include: {
+        tournament: true,
+      },
+    });
+
     // Store initial credits for all captains at the start of this player's round
     const roundInitialCredits = new Map();
     if (auctionState.captains && Array.isArray(auctionState.captains)) {
@@ -903,10 +910,25 @@ async function selectNextPlayer(auctionId, tournamentCode, io) {
         clearInterval(activeTimers.get(auctionId));
         activeTimers.delete(auctionId);
       }
-      // Persist auction end state
       await prisma.auction.update({
         where: { id: auctionId },
-        data: { isActive: false, currentPlayerId: null, currentTimer: 0 },
+        data: {
+          isActive: false,
+          endedAt: new Date(),
+          currentPlayerId: null,
+        },
+      });
+
+      await prisma.tournament.update({
+        where: { id: auction.tournament.id },
+        data: {
+          status: "COMPLETED",
+          endedAt: new Date(),
+        },
+      });
+
+      io.to(`tournament:${tournamentCode}`).emit("auction:complete", {
+        isActive: false,
       });
       return;
     }
